@@ -1,0 +1,34 @@
+# Multi-stage build for Spring Boot microservices (ARM64 Compatible)
+FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+
+# Copy parent POM and install it to local Maven repo
+COPY pom.xml .
+RUN mvn -N install -DskipTests
+
+# Copy and BUILD common-lib
+COPY common-lib ./common-lib
+WORKDIR /app/common-lib
+RUN mvn clean install -DskipTests
+
+# Now copy and build the target service
+ARG SERVICE_NAME
+COPY ${SERVICE_NAME} /app/${SERVICE_NAME}
+WORKDIR /app/${SERVICE_NAME}
+RUN mvn clean package -DskipTests
+
+# Runtime stage (ARM64 Compatible)
+FROM amazoncorretto:17
+WORKDIR /app
+
+ARG SERVICE_NAME
+COPY --from=build /app/${SERVICE_NAME}/target/*.jar app.jar
+
+# Create non-root user (Amazon Corretto uses yum/Amazon Linux)
+RUN yum install -y shadow-utils && groupadd -r spring && useradd -r -g spring spring
+RUN chown -R spring:spring /app
+USER spring:spring
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

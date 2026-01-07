@@ -1,0 +1,153 @@
+# Confiance Platform - Local Development
+# Use this for local testing with Docker
+# All services run locally with local MySQL and Redis
+
+version: '3'
+
+services:
+  # Infrastructure
+  confiancemysql:
+    image: mysql:8.0
+    container_name: confiancemysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: Confiance@2026!Secure
+      MYSQL_DATABASE: confiance_db
+      MYSQL_USER: confiance_user
+      MYSQL_PASSWORD: Confiance@2026!Secure
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  confianceredis:
+    image: redis:7-alpine
+    container_name: confianceredis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  # Application Services
+  confiancediscovery:
+    image: rahulb15/confiance-discovery-service:latest
+    container_name: confiancediscovery
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: 'false'
+      EUREKA_CLIENT_FETCH_REGISTRY: 'false'
+
+  confianceauth:
+    image: rahulb15/confiance-auth-service:latest
+    container_name: confianceauth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql:3306/confiance_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      SPRING_REDIS_HOST: confianceredis
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      - confiancemysql
+      - confianceredis
+      - confiancediscovery
+
+  confianceuser:
+    image: rahulb15/confiance-user-service:latest
+    container_name: confianceuser
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql:3306/confiance_users?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+
+  confiancegateway:
+    image: rahulb15/confiance-api-gateway:latest
+    container_name: confiancegateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_REDIS_HOST: confianceredis
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    depends_on:
+      - confianceredis
+      - confiancediscovery
+
+  confianceinvestment:
+    image: rahulb15/confiance-investment-service:latest
+    container_name: confianceinvestment
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql:3306/confiance_investments?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+
+  confiancetransaction:
+    image: rahulb15/confiance-transaction-service:latest
+    container_name: confiancetransaction
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql:3306/confiance_transactions?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+
+  confianceportfolio:
+    image: rahulb15/confiance-portfolio-service:latest
+    container_name: confianceportfolio
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql:3306/confiance_portfolios?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+
+  confiancenotification:
+    image: rahulb15/confiance-notification-service:latest
+    container_name: confiancenotification
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+    depends_on:
+      - confiancediscovery
+
+volumes:
+  mysql-data:
+  redis-data:

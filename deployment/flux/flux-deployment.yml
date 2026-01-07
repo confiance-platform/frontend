@@ -1,0 +1,38 @@
+# Confiance Frontend - Flux Production Deployment Configuration
+#
+# This file contains the complete configuration for deploying the Confiance
+# Frontend application on Flux Network.
+#
+# To deploy:
+# 1. Go to https://cloud.runonflux.com/apps/register/configure
+# 2. Select "Import" option
+# 3. Upload this file
+# 4. Review and deploy
+
+version: "4"
+name: confiance-frontend
+description: Confiance Financial Investment Platform - React Frontend
+owner: ""
+compose:
+  # Frontend Web Application
+  - name: confiancefrontend
+    description: React/Vite frontend application served with Nginx
+    repotag: rahulb15/confiance-frontend:latest
+    ports:
+      - 80
+    domains:
+      - confiance-app.com
+    environmentParameters:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=https://api.confiance.com/api/v1
+    containerPorts:
+      - 80
+    containerData: /usr/share/nginx/html
+    cpu: 0.5
+    ram: 512
+    hdd: 10
+    tiered: false
+    secrets:
+      - confiancefrontend
+    nodes:
+      - worldwide

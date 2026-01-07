@@ -1,0 +1,168 @@
+# Confiance Platform - Flux Production Deployment
+# Use this for Flux deployment with Railway MySQL & Redis
+# Deploy to: https://cloud.runonflux.com
+
+name: confiance-production
+
+version: '3'
+
+services:
+  confiancediscovery:
+    image: rahulb15/confiance-discovery-service:latest
+    container_name: confiancediscovery
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: 'false'
+      EUREKA_CLIENT_FETCH_REGISTRY: 'false'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  confianceauth:
+    image: rahulb15/confiance-auth-service:latest
+    container_name: confianceauth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Railway MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://caboose.proxy.rlwy.net:12992/confiance_auth?createDatabaseIfNotExist=true&useSSL=true&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: hahxqfvEdNayQkWmMaQJisTqZsgFkPFb
+      # Railway Redis
+      SPRING_REDIS_HOST: hopper.proxy.rlwy.net
+      SPRING_REDIS_PORT: 36629
+      SPRING_REDIS_PASSWORD: WsSbyoJdbPkJEwwxdUwrAIIGXvlEzYjz
+      # Eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      # JWT
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+      JWT_EXPIRATION: 86400000
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  confianceuser:
+    image: rahulb15/confiance-user-service:latest
+    container_name: confianceuser
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Railway MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://caboose.proxy.rlwy.net:12992/confiance_users?createDatabaseIfNotExist=true&useSSL=true&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: hahxqfvEdNayQkWmMaQJisTqZsgFkPFb
+      # Eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      # JWT
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  confiancegateway:
+    image: rahulb15/confiance-api-gateway:latest
+    container_name: confiancegateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Railway Redis
+      SPRING_REDIS_HOST: hopper.proxy.rlwy.net
+      SPRING_REDIS_PORT: 36629
+      SPRING_REDIS_PASSWORD: WsSbyoJdbPkJEwwxdUwrAIIGXvlEzYjz
+      # Eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      # JWT
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  confianceinvestment:
+    image: rahulb15/confiance-investment-service:latest
+    container_name: confianceinvestment
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Railway MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://caboose.proxy.rlwy.net:12992/confiance_investments?createDatabaseIfNotExist=true&useSSL=true&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: hahxqfvEdNayQkWmMaQJisTqZsgFkPFb
+      # Eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      # JWT
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  confiancetransaction:
+    image: rahulb15/confiance-transaction-service:latest
+    container_name: confiancetransaction
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Railway MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://caboose.proxy.rlwy.net:12992/confiance_transactions?createDatabaseIfNotExist=true&useSSL=true&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: hahxqfvEdNayQkWmMaQJisTqZsgFkPFb
+      # Eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      # JWT
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  confianceportfolio:
+    image: rahulb15/confiance-portfolio-service:latest
+    container_name: confianceportfolio
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Railway MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://caboose.proxy.rlwy.net:12992/confiance_portfolios?createDatabaseIfNotExist=true&useSSL=true&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: hahxqfvEdNayQkWmMaQJisTqZsgFkPFb
+      # Eureka
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+      # JWT
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  confiancenotification:
+    image: rahulb15/confiance-notification-service:latest
+    container_name: confiancenotification
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery:8761/eureka/
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M

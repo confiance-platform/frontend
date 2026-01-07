@@ -1,0 +1,409 @@
+# Confiance Platform - Complete Flux Deployment
+# Upload this file via Flux Import feature to deploy all services at once!
+# 
+# Fixed for Flux requirements: All services have persistent storage specified
+
+version: '3'
+
+services:
+  # ===========================
+  # 1. MySQL Database
+  # ===========================
+  confiancemysql:
+    image: mysql:8.0
+    container_name: confiancemysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: Confiance@2026!Secure
+      MYSQL_DATABASE: confiance_db
+      MYSQL_USER: confiance_user
+      MYSQL_PASSWORD: Confiance@2026!Secure
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2048M
+        reservations:
+          cpus: '1.0'
+          memory: 2048M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 2. phpMyAdmin
+  # ===========================
+  confiancephpmyadmin:
+    image: phpmyadmin:latest
+    container_name: confiancephpmyadmin
+    ports:
+      - "80:80"
+    environment:
+      PMA_HOST: confiancemysql.flux
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: Confiance@2026!Secure
+      UPLOAD_LIMIT: 50M
+    volumes:
+      - phpmyadmin-data:/tmp
+    depends_on:
+      - confiancemysql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 3. Redis Cache
+  # ===========================
+  confianceredis:
+    image: redis:7-alpine
+    container_name: confianceredis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 4. Discovery Service (Eureka)
+  # ===========================
+  confiancediscovery:
+    image: rahulb15/confiance-discovery-service:latest
+    container_name: confiancediscovery
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: 'false'
+      EUREKA_CLIENT_FETCH_REGISTRY: 'false'
+    volumes:
+      - discovery-data:/tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 5. Config Service (Optional)
+  # ===========================
+  confianceconfig:
+    image: rahulb15/confiance-config-service:latest
+    container_name: confianceconfig
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod,native
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+    volumes:
+      - config-data:/tmp
+    depends_on:
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 6. Auth Service
+  # ===========================
+  confianceauth:
+    image: rahulb15/confiance-auth-service:latest
+    container_name: confianceauth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql.flux:3306/confiance_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      SPRING_REDIS_HOST: confianceredis.flux
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+      JWT_EXPIRATION: 86400000
+    volumes:
+      - auth-data:/tmp
+    depends_on:
+      - confiancemysql
+      - confianceredis
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 7. User Service
+  # ===========================
+  confianceuser:
+    image: rahulb15/confiance-user-service:latest
+    container_name: confianceuser
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql.flux:3306/confiance_users?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    volumes:
+      - user-data:/tmp
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 8. API Gateway
+  # ===========================
+  confiancegateway:
+    image: rahulb15/confiance-api-gateway:latest
+    container_name: confiancegateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_REDIS_HOST: confianceredis.flux
+      SPRING_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    volumes:
+      - gateway-data:/tmp
+    depends_on:
+      - confianceredis
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 9. Investment Service
+  # ===========================
+  confianceinvestment:
+    image: rahulb15/confiance-investment-service:latest
+    container_name: confianceinvestment
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql.flux:3306/confiance_investments?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    volumes:
+      - investment-data:/tmp
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 10. Transaction Service
+  # ===========================
+  confiancetransaction:
+    image: rahulb15/confiance-transaction-service:latest
+    container_name: confiancetransaction
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql.flux:3306/confiance_transactions?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    volumes:
+      - transaction-data:/tmp
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 11. Portfolio Service
+  # ===========================
+  confianceportfolio:
+    image: rahulb15/confiance-portfolio-service:latest
+    container_name: confianceportfolio
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://confiancemysql.flux:3306/confiance_portfolios?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Confiance@2026!Secure
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      JWT_SECRET: ThisIsAVerySecureJWTSecretKeyForConfiancePlatform2026MustBeAtLeast64Characters!
+    volumes:
+      - portfolio-data:/tmp
+    depends_on:
+      - confiancemysql
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+  # ===========================
+  # 12. Notification Service
+  # ===========================
+  confiancenotification:
+    image: rahulb15/confiance-notification-service:latest
+    container_name: confiancenotification
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://confiancediscovery.flux:8761/eureka/
+      # Optional: Email configuration
+      # SPRING_MAIL_HOST: smtp.gmail.com
+      # SPRING_MAIL_PORT: 587
+      # SPRING_MAIL_USERNAME: your-email@gmail.com
+      # SPRING_MAIL_PASSWORD: your-app-password
+    volumes:
+      - notification-data:/tmp
+    depends_on:
+      - confiancediscovery
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      replicas: 1
+      restart_policy:
+        condition: always
+
+# ===========================
+# Volumes
+# ===========================
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  phpmyadmin-data:
+    driver: local
+  discovery-data:
+    driver: local
+  config-data:
+    driver: local
+  auth-data:
+    driver: local
+  user-data:
+    driver: local
+  gateway-data:
+    driver: local
+  investment-data:
+    driver: local
+  transaction-data:
+    driver: local
+  portfolio-data:
+    driver: local
+  notification-data:
+    driver: local
