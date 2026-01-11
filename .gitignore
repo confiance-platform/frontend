@@ -1,1 +1,6 @@
 node_modules
+docs
+*.md
+from_backend
+dist
+.claude

@@ -7,16 +7,31 @@ import {
     headerLanguages,
     searchData
 } from "../../Data/HeaderMenuData.js";
-import {Link} from 'react-router-dom'
+import {Link, useNavigate} from 'react-router-dom'
 import {Card, CardBody} from "reactstrap";
 import HeaderMode from "../../Layout/Header/HeaderMode.jsx";
+import {useAuth} from "../../context/AuthContext";
+import {toast} from "react-toastify";
 
 const HeaderMenu = () => {
+    const { logout, user } = useAuth();
+    const navigate = useNavigate();
     const [cartItems, setCartItems] = useState(initialCartItems);
 
     const handleRemoveItem = (id) => {
         const updatedCartItems = cartItems.filter(item => item.id !== id);
         setCartItems(updatedCartItems);
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            toast.success('Logged out successfully');
+            navigate('/auth/sign-in');
+        } catch (error) {
+            console.error('Logout error:', error);
+            toast.error('Failed to logout. Please try again.');
+        }
     };
 
     const [notificationsItems, setNotificationsItems] = useState(initialnotifications);
@@ -500,8 +515,8 @@ const HeaderMenu = () => {
                             </span>
                                     </div>
                                     <div className="text-center mt-2">
-                                        <h6 className="mb-0"> Laura Monaldo</h6>
-                                        <p className="f-s-12 mb-0 text-secondary">lauradesign@gmail.com
+                                        <h6 className="mb-0">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email || 'User'}</h6>
+                                        <p className="f-s-12 mb-0 text-secondary">{user?.email || 'user@example.com'}
                                         </p>
                                     </div>
                                 </li>
@@ -608,9 +623,12 @@ const HeaderMenu = () => {
                                 <li className="app-divider-v dotted my-1"></li>
 
                                 <li>
-                                    <Link className="mb-0 text-danger" href="/admin-pages/auth_pages/sign_in">
+                                    <a className="mb-0 text-danger" href="#" onClick={(e) => {
+                                        e.preventDefault();
+                                        handleLogout();
+                                    }} style={{ cursor: 'pointer' }}>
                                         <i className="ph-duotone  ph-sign-out pe-1 f-s-20"></i> Log Out
-                                    </Link>
+                                    </a>
                                 </li>
                             </ul>
                         </div>

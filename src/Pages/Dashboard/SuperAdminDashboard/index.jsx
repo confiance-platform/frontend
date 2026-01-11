@@ -1,30 +1,92 @@
 // Super Admin Dashboard - Full System Control
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { FaUsers, FaUserShield, FaShieldAlt, FaCog, FaChartBar } from "react-icons/fa";
+import { FaUsers, FaUserShield, FaShieldAlt, FaCog, FaChartBar, FaSpinner } from "react-icons/fa";
+import { userService, adminService } from "@/Services";
+import { toast } from "react-toastify";
 
 const SuperAdminDashboard = () => {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [availablePermissions, setAvailablePermissions] = useState([]);
 
-  // Mock data - replace with actual API calls
-  const systemStats = {
-    totalUsers: 1248,
-    totalAdmins: 8,
-    activePermissions: 14,
-    systemUptime: "99.9%"
+  useEffect(() => {
+    if (user?.id) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch all users
+      const usersResponse = await userService.getAllUsers({
+        page: 0,
+        size: 200,
+        sortBy: 'createdAt',
+        sortDirection: 'desc'
+      });
+
+      if (usersResponse.success && usersResponse.data?.content) {
+        const users = usersResponse.data.content;
+        setAllUsers(users);
+
+        // Filter admin users
+        const admins = users.filter(u =>
+          u.roles?.some(role => role.includes('ADMIN'))
+        );
+        setAdminUsers(admins);
+      }
+
+      // Fetch available permissions
+      const permissionsResponse = await adminService.getAvailablePermissions();
+      if (permissionsResponse.success && permissionsResponse.data) {
+        setAvailablePermissions(permissionsResponse.data);
+      }
+
+    } catch (error) {
+      console.error('Error fetching super admin dashboard data:', error);
+      toast.error(error.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const recentAdmins = [
-    { id: 1, name: "Admin One", email: "admin1@confiance.com", role: "ADMIN", lastActive: "2 hours ago" },
-    { id: 2, name: "Admin Two", email: "admin2@confiance.com", role: "ADMIN", lastActive: "5 hours ago" }
-  ];
+  // Calculate system statistics
+  const calculateSystemStats = () => {
+    const totalUsers = allUsers.length;
+    const totalAdmins = adminUsers.length;
+    const activePermissions = availablePermissions.length;
 
-  const systemActivities = [
-    { id: 1, action: "User created", user: "John Doe", timestamp: "10 minutes ago" },
-    { id: 2, action: "Permission granted", user: "Jane Smith", timestamp: "1 hour ago" },
-    { id: 3, action: "Admin promoted", user: "Admin Three", timestamp: "3 hours ago" }
-  ];
+    // Calculate system uptime (simulated - would come from backend in real scenario)
+    const uptime = "99.9%";
+
+    return {
+      totalUsers,
+      totalAdmins,
+      activePermissions,
+      systemUptime: uptime
+    };
+  };
+
+  const stats = calculateSystemStats();
+
+  if (loading) {
+    return (
+      <div className="container-fluid">
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+          <div className="text-center">
+            <FaSpinner className="fa-spin fs-1 text-primary mb-3" />
+            <p className="text-muted">Loading super admin dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid">
@@ -37,7 +99,9 @@ const SuperAdminDashboard = () => {
                 <FaShieldAlt className="me-2" />
                 Super Admin Dashboard
               </h4>
-              <p className="mb-0 opacity-75">Complete system control and oversight - Welcome, {user?.name}!</p>
+              <p className="mb-0 opacity-75">
+                Complete system control and oversight - Welcome, {user?.firstName || user?.email}!
+              </p>
             </div>
           </div>
         </div>
@@ -56,7 +120,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div className="flex-grow-1 ms-3">
                   <p className="text-muted mb-1 small">Total Users</p>
-                  <h4 className="mb-0 fw-bold">{systemStats.totalUsers.toLocaleString()}</h4>
+                  <h4 className="mb-0 fw-bold">{stats.totalUsers.toLocaleString()}</h4>
                 </div>
               </div>
             </div>
@@ -74,7 +138,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div className="flex-grow-1 ms-3">
                   <p className="text-muted mb-1 small">Total Admins</p>
-                  <h4 className="mb-0 fw-bold">{systemStats.totalAdmins}</h4>
+                  <h4 className="mb-0 fw-bold">{stats.totalAdmins}</h4>
                 </div>
               </div>
             </div>
@@ -92,7 +156,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div className="flex-grow-1 ms-3">
                   <p className="text-muted mb-1 small">Permissions</p>
-                  <h4 className="mb-0 fw-bold">{systemStats.activePermissions}</h4>
+                  <h4 className="mb-0 fw-bold">{stats.activePermissions}</h4>
                 </div>
               </div>
             </div>
@@ -110,7 +174,7 @@ const SuperAdminDashboard = () => {
                 </div>
                 <div className="flex-grow-1 ms-3">
                   <p className="text-muted mb-1 small">System Uptime</p>
-                  <h4 className="mb-0 fw-bold">{systemStats.systemUptime}</h4>
+                  <h4 className="mb-0 fw-bold">{stats.systemUptime}</h4>
                 </div>
               </div>
             </div>
@@ -119,7 +183,7 @@ const SuperAdminDashboard = () => {
       </div>
 
       <div className="row g-4">
-        {/* Admins List */}
+        {/* Admin Users */}
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white d-flex justify-content-between align-items-center">
@@ -129,53 +193,73 @@ const SuperAdminDashboard = () => {
               </Link>
             </div>
             <div className="card-body">
-              <div className="table-responsive">
-                <table className="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Last Active</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentAdmins.map((admin) => (
-                      <tr key={admin.id}>
-                        <td className="fw-bold">
-                          <FaUserShield className="text-warning me-2" />
-                          {admin.name}
-                        </td>
-                        <td>{admin.email}</td>
-                        <td className="text-muted small">{admin.lastActive}</td>
+              {adminUsers.length > 0 ? (
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {adminUsers.slice(0, 5).map((admin) => (
+                        <tr key={admin.id}>
+                          <td className="fw-bold">
+                            <FaUserShield className="text-warning me-2" />
+                            {admin.firstName} {admin.lastName}
+                          </td>
+                          <td>{admin.email}</td>
+                          <td>
+                            <span className="badge bg-warning-subtle text-warning">
+                              {admin.roles?.[0]?.replace('ROLE_', '') || 'ADMIN'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-5 text-muted">
+                  <FaUserShield className="fs-1 mb-3 opacity-50" />
+                  <p>No admin users found</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Recent System Activity */}
+        {/* Available Permissions */}
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm">
-            <div className="card-header bg-white">
-              <h5 className="mb-0">Recent System Activity</h5>
+            <div className="card-header bg-white d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">System Permissions</h5>
+              <Link to="/admin/permissions" className="btn btn-sm btn-info">
+                Manage
+              </Link>
             </div>
             <div className="card-body">
-              <div className="list-group list-group-flush">
-                {systemActivities.map((activity) => (
-                  <div key={activity.id} className="list-group-item border-0 px-0">
-                    <div className="d-flex justify-content-between align-items-start">
-                      <div>
-                        <p className="mb-1 fw-bold">{activity.action}</p>
-                        <small className="text-muted">{activity.user}</small>
+              {availablePermissions.length > 0 ? (
+                <div className="row g-2">
+                  {availablePermissions.slice(0, 12).map((perm, index) => (
+                    <div key={index} className="col-md-6">
+                      <div className="p-2 bg-light rounded">
+                        <small className="fw-bold text-dark">
+                          <FaShieldAlt className="text-info me-1" style={{ fontSize: '0.8rem' }} />
+                          {perm}
+                        </small>
                       </div>
-                      <small className="text-muted">{activity.timestamp}</small>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-5 text-muted">
+                  <FaShieldAlt className="fs-1 mb-3 opacity-50" />
+                  <p>No permissions configured</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -193,26 +277,26 @@ const SuperAdminDashboard = () => {
                 <div className="col-md-3">
                   <Link to="/admin/users" className="btn btn-outline-primary w-100">
                     <FaUsers className="me-2" />
-                    All Users
+                    All Users ({stats.totalUsers})
                   </Link>
                 </div>
                 <div className="col-md-3">
                   <Link to="/admin/admins" className="btn btn-outline-warning w-100">
                     <FaUserShield className="me-2" />
-                    Manage Admins
+                    Manage Admins ({stats.totalAdmins})
                   </Link>
                 </div>
                 <div className="col-md-3">
                   <Link to="/admin/permissions" className="btn btn-outline-info w-100">
                     <FaShieldAlt className="me-2" />
-                    Permissions
+                    Permissions ({stats.activePermissions})
                   </Link>
                 </div>
                 <div className="col-md-3">
-                  <Link to="/admin/config" className="btn btn-outline-secondary w-100">
+                  <button onClick={fetchDashboardData} className="btn btn-outline-secondary w-100">
                     <FaCog className="me-2" />
-                    System Config
-                  </Link>
+                    Refresh Data
+                  </button>
                 </div>
               </div>
             </div>

@@ -18,6 +18,15 @@ const UserDashboard = React.lazy(() => import("@/Pages/Dashboard/UserDashboard")
 const AdminDashboard = React.lazy(() => import("@/Pages/Dashboard/AdminDashboard"));
 const SuperAdminDashboard = React.lazy(() => import("@/Pages/Dashboard/SuperAdminDashboard"));
 
+// Admin Pages - User Management
+const AllUsers = React.lazy(() => import("@/Pages/Admin/UserManagement/AllUsers"));
+const CreateUser = React.lazy(() => import("@/Pages/Admin/UserManagement/CreateUser"));
+
+// Admin Pages - Admin Management
+const AllAdmins = React.lazy(() => import("@/Pages/Admin/AdminManagement/AllAdmins"));
+const CreateAdmin = React.lazy(() => import("@/Pages/Admin/AdminManagement/CreateAdmin"));
+const PermissionsManagement = React.lazy(() => import("@/Pages/Admin/AdminManagement/Permissions"));
+
 // Existing Dashboard Pages (will be used for portfolio, investments, crypto)
 const Ecommerce = React.lazy(() => import("@/Pages/Dashboard/Ecommerce"));
 const ProjectPage = React.lazy(() => import("@/Pages/Dashboard/ProjectsPage"));
@@ -114,6 +123,15 @@ const Routes = () => {
         { path: AppsRoutes.PROFILE_PAGE, element: <Profile /> },
         { path: AppsRoutes.SETTING_PAGE, element: <Settings /> },
         { path: AppsRoutes.INVOICE_PAGE, element: <Invoice /> },
+
+        // Admin - User Management Routes
+        { path: "admin/users", element: <AllUsers /> },
+        { path: "admin/users/create", element: <CreateUser /> },
+
+        // Admin - Admin Management Routes (Super Admin Only)
+        { path: "admin/admins", element: <AllAdmins /> },
+        { path: "admin/admins/create", element: <CreateAdmin /> },
+        { path: "admin/permissions", element: <PermissionsManagement /> },
       ],
     },
 
