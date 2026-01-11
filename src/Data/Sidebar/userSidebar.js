@@ -9,20 +9,20 @@ export const userSidebarConfig = [
   {
     type: "single",
     name: "Portfolio",
-    path: "/dashboard/ecommerce",
+    path: "/financial/portfolio",
     iconClass: "ph-duotone ph-briefcase"
   },
   {
     type: "single",
     name: "Investments",
-    path: "/dashboard/project",
+    path: "/financial/investments",
     iconClass: "ph-duotone ph-chart-line-up"
   },
   {
     type: "single",
-    name: "Crypto Portfolio",
-    path: "/dashboard/crypto",
-    iconClass: "ph-duotone ph-currency-bitcoin"
+    name: "Transactions",
+    path: "/financial/transactions",
+    iconClass: "ph-duotone ph-arrows-left-right"
   },
   {
     type: "dropdown",
@@ -30,8 +30,8 @@ export const userSidebarConfig = [
     iconClass: "ph-duotone ph-user",
     collapseId: "account",
     children: [
-      { name: "Profile", path: "/apps/profile" },
-      { name: "Settings", path: "/apps/settings" },
+      { name: "Profile", path: "/apps/profile-page/profile" },
+      { name: "Settings", path: "/apps/profile-page/setting" },
       { name: "Invoice", path: "/apps/invoice" }
     ]
   }

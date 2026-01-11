@@ -27,6 +27,11 @@ const AllAdmins = React.lazy(() => import("@/Pages/Admin/AdminManagement/AllAdmi
 const CreateAdmin = React.lazy(() => import("@/Pages/Admin/AdminManagement/CreateAdmin"));
 const PermissionsManagement = React.lazy(() => import("@/Pages/Admin/AdminManagement/Permissions"));
 
+// Financial Pages
+const Portfolio = React.lazy(() => import("@/Pages/Financial/Portfolio"));
+const Transactions = React.lazy(() => import("@/Pages/Financial/Transactions"));
+const Investments = React.lazy(() => import("@/Pages/Financial/Investments"));
+
 // Existing Dashboard Pages (will be used for portfolio, investments, crypto)
 const Ecommerce = React.lazy(() => import("@/Pages/Dashboard/Ecommerce"));
 const ProjectPage = React.lazy(() => import("@/Pages/Dashboard/ProjectsPage"));
@@ -132,6 +137,11 @@ const Routes = () => {
         { path: "admin/admins", element: <AllAdmins /> },
         { path: "admin/admins/create", element: <CreateAdmin /> },
         { path: "admin/permissions", element: <PermissionsManagement /> },
+
+        // Financial Pages
+        { path: "financial/portfolio", element: <Portfolio /> },
+        { path: "financial/transactions", element: <Transactions /> },
+        { path: "financial/investments", element: <Investments /> },
       ],
     },
 

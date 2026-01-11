@@ -523,13 +523,13 @@ const HeaderMenu = () => {
 
                                 <li className="app-divider-v dotted my-1"></li>
                                 <li>
-                                    <Link className="f-w-500" href="/apps/profile-page/profile">
+                                    <Link className="f-w-500" to="/apps/profile-page/profile">
                                         <i className="ph-duotone  ph-user-circle pe-1 f-s-20"></i>
-                                        Profile Detaiils
+                                        Profile Details
                                     </Link>
                                 </li>
                                 <li>
-                                    <Link className="f-w-500" href="/apps/profile-page/setting">
+                                    <Link className="f-w-500" to="/apps/profile-page/setting">
                                         <i className="ph-duotone  ph-gear pe-1 f-s-20"></i> Settings
                                     </Link>
                                 </li>
