@@ -504,7 +504,7 @@ const HeaderMenu = () => {
 
                     <div className="offcanvas offcanvas-end header-profile-canvas" tabIndex="-1"
                          id="profilecanvasRight" aria-labelledby="profilecanvasRight">
-                        <div className="offcanvas-body app-scroll">
+                        <div className="offcanvas-body app-scroll" style={{ maxHeight: 'calc(100vh - 20px)', overflowY: 'auto' }}>
                             <ul className="">
                                 <li>
                                     <div className="d-flex-center">
@@ -603,7 +603,7 @@ const HeaderMenu = () => {
                                 </li>
                                 <li className="app-divider-v dotted my-1"></li>
                                 <li>
-                                    <Card className="card-light-primary upgrade-plan">
+                                    {/* <Card className="card-light-primary upgrade-plan">
                                         <CardBody>
                                             <div className="text-center">
                                                 <div>
@@ -618,7 +618,7 @@ const HeaderMenu = () => {
                                                 </div>
                                             </div>
                                         </CardBody>
-                                    </Card>
+                                    </Card> */}
                                 </li>
                                 <li className="app-divider-v dotted my-1"></li>
 

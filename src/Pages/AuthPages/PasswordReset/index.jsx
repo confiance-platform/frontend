@@ -105,13 +105,9 @@ const PasswordReset = () => {
                 <Col lg={6} className="image-contentbox d-none d-lg-block">
                   <div className="form-container">
                     <div className="signup-content mt-4">
-                      <span>
-                        <img
-                          src="../assets/images/logo/1.png"
-                          alt="Confiance"
-                          className="img-fluid"
-                        />
-                      </span>
+                    <h2 className="text-primary fw-bold" style={{ fontSize: '2.5rem', letterSpacing: '1px' }}>
+                      Confiance
+                    </h2>
                     </div>
                     <div className="signup-bg-img">
                       <img

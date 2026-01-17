@@ -27,10 +27,11 @@ const Sidebar = ({sidebarOpen, setIsSidebarOpen}) => {
 
     return (
         <nav className={`vertical-sidebar ${sidebarOpen ? "semi-nav" : ""}`}>
-            <div className="app-logo">
-                <Link className="logo d-inline-block" to={getDashboardLink()}>
-                    {/* <img src="/assets/images/logo/ra-white.png" alt="#" className="light-logo"/> */}
-                    <img src="/assets/images/logo/1.png" alt="#" className="dark-logo"/>
+            <div className="app-logo" style={{ padding: '1rem 1.5rem', minHeight: '60px' }}>
+                <Link className="logo d-inline-block" to={getDashboardLink()} style={{ textDecoration: 'none' }}>
+                    <h4 className="text-primary mb-0 fw-bold" style={{ fontSize: '1.5rem', letterSpacing: '0.5px' }}>
+                        Confiance
+                    </h4>
                 </Link>
                 <span
                     className="bg-light-light toggle-semi-nav"
@@ -41,7 +42,11 @@ const Sidebar = ({sidebarOpen, setIsSidebarOpen}) => {
                     <i className="ti ti-chevrons-right f-s-20"></i>
                 </span>
             </div>
-            <Scrollbar className="app-nav simplebar-scrollable-y" id="app-simple-bar">
+            <Scrollbar
+                className="app-nav simplebar-scrollable-y"
+                id="app-simple-bar"
+                style={{ height: 'calc(100vh - 80px)' }}
+            >
                 <ul className="main-nav p-0 mt-2">
                     {sidebarConfig.map((config, index) => (
                         <MenuItem key={index} {...config} />
