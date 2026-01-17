@@ -5,8 +5,10 @@ import { toast } from 'react-toastify';
 import { FaPlus, FaEdit, FaTrash, FaUserShield, FaSpinner, FaSearch, FaCrown } from 'react-icons/fa';
 import { userService } from '@/Services';
 import { USER_ROLES } from '@/config/constants';
+import { useAuth } from '@/context/AuthContext';
 
 const AllAdmins = () => {
+  const { isSuperAdmin } = useAuth();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -33,10 +35,19 @@ const AllAdmins = () => {
       });
 
       if (response.success && response.data) {
-        // Filter to show only admins and super admins
-        const adminUsers = (response.data.content || []).filter(user =>
-          user.roles?.includes(USER_ROLES.ADMIN) || user.roles?.includes(USER_ROLES.SUPER_ADMIN)
-        );
+        // Filter to show only admins (and super admins only if current user is super admin)
+        const adminUsers = (response.data.content || []).filter(user => {
+          const isAdmin = user.roles?.includes(USER_ROLES.ADMIN);
+          const isUserSuperAdmin = user.roles?.includes(USER_ROLES.SUPER_ADMIN);
+
+          // If current user is super admin, show both admins and super admins
+          if (isSuperAdmin()) {
+            return isAdmin || isUserSuperAdmin;
+          }
+
+          // If current user is regular admin, only show admins (not super admins)
+          return isAdmin && !isUserSuperAdmin;
+        });
 
         setAdmins(adminUsers);
         setPagination({
@@ -85,7 +96,8 @@ const AllAdmins = () => {
     }
   };
 
-  const isSuperAdmin = (user) => user.roles?.includes(USER_ROLES.SUPER_ADMIN);
+  // Check if a specific user has super admin role (different from isSuperAdmin() from useAuth)
+  const isUserSuperAdmin = (user) => user.roles?.includes(USER_ROLES.SUPER_ADMIN);
 
   if (loading && admins.length === 0) {
     return (
@@ -144,7 +156,9 @@ const AllAdmins = () => {
                   >
                     <option value="">All Admin Roles</option>
                     <option value={USER_ROLES.ADMIN}>Admin</option>
-                    <option value={USER_ROLES.SUPER_ADMIN}>Super Admin</option>
+                    {isSuperAdmin() && (
+                      <option value={USER_ROLES.SUPER_ADMIN}>Super Admin</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -183,8 +197,8 @@ const AllAdmins = () => {
                           <td className="fw-bold">{admin.id}</td>
                           <td>
                             <div className="d-flex align-items-center">
-                              <div className={`avatar-sm ${isSuperAdmin(admin) ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'} rounded-circle d-flex align-items-center justify-content-center me-2`}>
-                                {isSuperAdmin(admin) ? <FaCrown /> : <FaUserShield />}
+                              <div className={`avatar-sm ${isUserSuperAdmin(admin) ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'} rounded-circle d-flex align-items-center justify-content-center me-2`}>
+                                {isUserSuperAdmin(admin) ? <FaCrown /> : <FaUserShield />}
                               </div>
                               <div>
                                 <div className="fw-bold">{admin.firstName} {admin.lastName}</div>

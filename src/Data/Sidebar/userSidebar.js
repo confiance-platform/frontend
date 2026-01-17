@@ -8,21 +8,38 @@ export const userSidebarConfig = [
   },
   {
     type: "single",
+    name: "Recommendations",
+    path: "/financial/recommendations",
+    iconClass: "ph-duotone ph-lightbulb"
+  },
+  {
+    type: "dropdown",
+    name: "Trading",
+    iconClass: "ph-duotone ph-chart-line-up",
+    collapseId: "trading",
+    children: [
+      { name: "Record Trade", path: "/financial/trades" },
+      { name: "Holdings", path: "/financial/holdings" },
+      { name: "Investment Products", path: "/financial/investments" }
+    ]
+  },
+  {
+    type: "single",
     name: "Portfolio",
     path: "/financial/portfolio",
     iconClass: "ph-duotone ph-briefcase"
   },
   {
     type: "single",
-    name: "Investments",
-    path: "/financial/investments",
-    iconClass: "ph-duotone ph-chart-line-up"
-  },
-  {
-    type: "single",
     name: "Transactions",
     path: "/financial/transactions",
     iconClass: "ph-duotone ph-arrows-left-right"
+  },
+  {
+    type: "single",
+    name: "Referrals",
+    path: "/financial/referrals",
+    iconClass: "ph-duotone ph-users-three"
   },
   {
     type: "dropdown",

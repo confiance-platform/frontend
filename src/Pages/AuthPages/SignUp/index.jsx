@@ -93,11 +93,11 @@ const SignUp = () => {
   };
 
   return (
-    <div className="sign-in-bg">
+    <div className="sign-in-bg" style={{ minHeight: '100vh', overflow: 'auto' }}>
       <div className="app-wrapper d-block">
-        <div className="main-container">
+        <div className="main-container" style={{ minHeight: '100vh', alignItems: 'flex-start', paddingTop: '20px', paddingBottom: '20px' }}>
           <Container>
-            <Row className="sign-in-content-bg">
+            <Row className="sign-in-content-bg" style={{ overflow: 'visible' }}>
               <Col lg={6} className="image-contentbox d-none d-lg-block">
                 <div className="form-container">
                   <div className="signup-content mt-4">
@@ -120,7 +120,7 @@ const SignUp = () => {
                 </div>
               </Col>
 
-              <Col lg={6} className="form-contentbox">
+              <Col lg={6} className="form-contentbox" style={{ alignItems: 'flex-start' }}>
                 <div className="form-container">
                   <form className="app-form" onSubmit={handleSubmit(onSubmit)}>
                     <Row>

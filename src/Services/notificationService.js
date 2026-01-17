@@ -1,6 +1,6 @@
 // Notification Service
 import apiClient from './apiClient';
-import { API_ENDPOINTS } from '../config/constants';
+import { API_ENDPOINTS, PAGINATION } from '../config/constants';
 
 class NotificationService {
   /**
@@ -18,6 +18,60 @@ class NotificationService {
   }
 
   /**
+   * Send simple email
+   * @param {string} to - Recipient email
+   * @param {string} subject - Email subject
+   * @param {string} body - Email body
+   * @returns {Promise} Send response
+   */
+  async sendSimpleEmail(to, subject, body) {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS.SEND_EMAIL_SIMPLE, {
+        to,
+        subject,
+        body,
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Send template email
+   * @param {string} to - Recipient email
+   * @param {string} templateName - Template name
+   * @param {object} variables - Template variables
+   * @returns {Promise} Send response
+   */
+  async sendTemplateEmail(to, templateName, variables) {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS.SEND_EMAIL_TEMPLATE, {
+        to,
+        templateName,
+        variables,
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Send email asynchronously
+   * @param {object} emailData - Email data
+   * @returns {Promise} Send response
+   */
+  async sendEmailAsync(emailData) {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS.SEND_EMAIL_ASYNC, emailData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Get user notifications
    * @param {number} userId - User ID
    * @param {object} params - Query parameters
@@ -25,8 +79,13 @@ class NotificationService {
    */
   async getUserNotifications(userId, params = {}) {
     try {
-      const response = await apiClient.get(`/notifications/user/${userId}`, {
-        params,
+      const queryParams = {
+        page: params.page ?? PAGINATION.DEFAULT_PAGE,
+        size: params.size ?? PAGINATION.DEFAULT_SIZE,
+      };
+
+      const response = await apiClient.get(API_ENDPOINTS.NOTIFICATIONS.USER(userId), {
+        params: queryParams,
       });
       return response;
     } catch (error) {
@@ -37,11 +96,18 @@ class NotificationService {
   /**
    * Mark notification as read
    * @param {number} notificationId - Notification ID
+   * @param {number} userId - User ID (required for X-User-Id header)
    * @returns {Promise} Update response
    */
-  async markAsRead(notificationId) {
+  async markAsRead(notificationId, userId) {
     try {
-      const response = await apiClient.put(`/notifications/${notificationId}/read`);
+      const response = await apiClient.put(
+        API_ENDPOINTS.NOTIFICATIONS.MARK_READ(notificationId),
+        null,
+        {
+          headers: { 'X-User-Id': userId },
+        }
+      );
       return response;
     } catch (error) {
       throw error;
@@ -55,7 +121,7 @@ class NotificationService {
    */
   async markAllAsRead(userId) {
     try {
-      const response = await apiClient.put(`/notifications/user/${userId}/read-all`);
+      const response = await apiClient.put(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ(userId));
       return response;
     } catch (error) {
       throw error;
@@ -65,11 +131,17 @@ class NotificationService {
   /**
    * Delete notification
    * @param {number} notificationId - Notification ID
+   * @param {number} userId - User ID (required for X-User-Id header)
    * @returns {Promise} Delete response
    */
-  async deleteNotification(notificationId) {
+  async deleteNotification(notificationId, userId) {
     try {
-      const response = await apiClient.delete(`/notifications/${notificationId}`);
+      const response = await apiClient.delete(
+        API_ENDPOINTS.NOTIFICATIONS.DELETE(notificationId),
+        {
+          headers: { 'X-User-Id': userId },
+        }
+      );
       return response;
     } catch (error) {
       throw error;
@@ -83,7 +155,7 @@ class NotificationService {
    */
   async getUnreadCount(userId) {
     try {
-      const response = await apiClient.get(`/notifications/user/${userId}/unread-count`);
+      const response = await apiClient.get(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT(userId));
       return response;
     } catch (error) {
       throw error;

@@ -91,6 +91,111 @@ export const TRANSACTION_STATUS = {
   REFUNDED: 'REFUNDED',
 };
 
+// Markets
+export const MARKETS = {
+  US: 'US',
+  INDIA: 'INDIA',
+  UK: 'UK',
+  EU: 'EU',
+  SINGAPORE: 'SINGAPORE',
+  HONG_KONG: 'HONG_KONG',
+  JAPAN: 'JAPAN',
+  CANADA: 'CANADA',
+  AUSTRALIA: 'AUSTRALIA',
+};
+
+// Market Labels for display
+export const MARKET_LABELS = {
+  US: 'United States (USD)',
+  INDIA: 'India (INR)',
+  UK: 'United Kingdom (GBP)',
+  EU: 'European Union (EUR)',
+  SINGAPORE: 'Singapore (SGD)',
+  HONG_KONG: 'Hong Kong (HKD)',
+  JAPAN: 'Japan (JPY)',
+  CANADA: 'Canada (CAD)',
+  AUSTRALIA: 'Australia (AUD)',
+};
+
+// Trade Types
+export const TRADE_TYPES = {
+  POSITIONAL: 'POSITIONAL',
+  LONG_TERM: 'LONG_TERM',
+  MOMENTUM: 'MOMENTUM',
+  SWING: 'SWING',
+  INTRADAY: 'INTRADAY',
+};
+
+// Trade Type Labels
+export const TRADE_TYPE_LABELS = {
+  POSITIONAL: 'Positional (Short to Medium Term)',
+  LONG_TERM: 'Long Term Investment',
+  MOMENTUM: 'Momentum (Quick Gains)',
+  SWING: 'Swing Trade',
+  INTRADAY: 'Intraday',
+};
+
+// Recommendation Status
+export const RECOMMENDATION_STATUS = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  PARTIALLY_SOLD: 'PARTIALLY_SOLD',
+  EXPIRED: 'EXPIRED',
+};
+
+// Trade Status
+export const TRADE_STATUS = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  PARTIALLY_SOLD: 'PARTIALLY_SOLD',
+};
+
+// Referral Status
+export const REFERRAL_STATUS = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  PAID: 'PAID',
+  PENDING: 'PENDING',
+};
+
+// Payment Status
+export const PAYMENT_STATUS = {
+  CREATED: 'CREATED',
+  AUTHORIZED: 'AUTHORIZED',
+  CAPTURED: 'CAPTURED',
+  REFUNDED: 'REFUNDED',
+  FAILED: 'FAILED',
+};
+
+// OTP Purpose
+export const OTP_PURPOSE = {
+  REGISTRATION: 'REGISTRATION',
+  LOGIN: 'LOGIN',
+  PASSWORD_RESET: 'PASSWORD_RESET',
+  PHONE_VERIFICATION: 'PHONE_VERIFICATION',
+  EMAIL_VERIFICATION: 'EMAIL_VERIFICATION',
+  TRANSACTION: 'TRANSACTION',
+  TWO_FACTOR_AUTH: 'TWO_FACTOR_AUTH',
+};
+
+// Salutation Options
+export const SALUTATIONS = {
+  MR: 'MR',
+  MRS: 'MRS',
+  MS: 'MS',
+  DR: 'DR',
+  PROF: 'PROF',
+};
+
+// Salutation Labels
+export const SALUTATION_LABELS = {
+  MR: 'Mr.',
+  MRS: 'Mrs.',
+  MS: 'Ms.',
+  DR: 'Dr.',
+  PROF: 'Prof.',
+};
+
 // API Endpoints
 export const API_ENDPOINTS = {
   // Auth
@@ -98,6 +203,9 @@ export const API_ENDPOINTS = {
     LOGIN: '/auth/login',
     LOGOUT: '/auth/logout',
     REFRESH: '/auth/refresh',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
+    VERIFY_RESET_TOKEN: '/auth/verify-reset-token',
   },
   // Users
   USERS: {
@@ -140,6 +248,82 @@ export const API_ENDPOINTS = {
   // Notifications
   NOTIFICATIONS: {
     SEND_EMAIL: '/notifications/send-email',
+    SEND_EMAIL_SIMPLE: '/notifications/send-email/simple',
+    SEND_EMAIL_TEMPLATE: '/notifications/send-email/template',
+    SEND_EMAIL_ASYNC: '/notifications/send-email/async',
+    USER: (userId) => `/notifications/user/${userId}`,
+    MARK_READ: (notificationId) => `/notifications/${notificationId}/read`,
+    MARK_ALL_READ: (userId) => `/notifications/user/${userId}/read-all`,
+    DELETE: (notificationId) => `/notifications/${notificationId}`,
+    UNREAD_COUNT: (userId) => `/notifications/user/${userId}/unread-count`,
+  },
+  // Payments (Razorpay)
+  PAYMENTS: {
+    CREATE_ORDER: '/payments/create-order',
+    VERIFY: '/payments/verify',
+    USER: (userId) => `/payments/user/${userId}`,
+    GET_BY_ID: (paymentId) => `/payments/${paymentId}`,
+    REFUND: (paymentId) => `/payments/${paymentId}/refund`,
+  },
+  // OTP
+  OTP: {
+    SEND: '/otp/send',
+    VERIFY: '/otp/verify',
+    RESEND: '/otp/resend',
+  },
+  // File Upload
+  FILES: {
+    UPLOAD: '/files/upload',
+    UPLOAD_IMAGE: '/files/upload/image',
+    UPLOAD_DOCUMENT: '/files/upload/document',
+    UPLOAD_VIDEO: '/files/upload/video',
+    GET_BY_ENTITY: (entityType, entityId) => `/files/entity/${entityType}/${entityId}`,
+    DELETE: (publicId) => `/files/${publicId}`,
+    GET_BY_USER: (userId) => `/files/user/${userId}`,
+  },
+  // Recommendations
+  RECOMMENDATIONS: {
+    LIST: '/recommendations',
+    OPEN: '/recommendations/open',
+    GET_BY_ID: (id) => `/recommendations/${id}`,
+    CREATE: '/recommendations',
+    UPDATE: (id) => `/recommendations/${id}`,
+    DELETE: (id) => `/recommendations/${id}`,
+    FILTER: '/recommendations/filter',
+    BY_MARKET: (market) => `/recommendations/market/${market}`,
+  },
+  // Trades
+  TRADES: {
+    USER: (userId) => `/trades/user/${userId}`,
+    CREATE: (userId) => `/trades/user/${userId}`,
+    UPDATE: (tradeId, userId) => `/trades/${tradeId}/user/${userId}`,
+    DELETE: (tradeId, userId) => `/trades/${tradeId}/user/${userId}`,
+    SELL: (tradeId, userId) => `/trades/${tradeId}/user/${userId}/sell`,
+    GET_BY_ID: (tradeId, userId) => `/trades/${tradeId}/user/${userId}`,
+    FILTER: (userId) => `/trades/user/${userId}/filter`,
+    BY_STATUS: (userId, status) => `/trades/user/${userId}/status/${status}`,
+    DATE_RANGE: (userId) => `/trades/user/${userId}/date-range`,
+    SUMMARY: (userId) => `/trades/user/${userId}/summary`,
+    ADMIN_ALL: '/trades/admin/all',
+  },
+  // Holdings
+  HOLDINGS: {
+    USER: (userId) => `/holdings/user/${userId}`,
+    SUMMARY: (userId) => `/holdings/user/${userId}/summary`,
+    BY_MARKET: (userId, market) => `/holdings/user/${userId}/market/${market}`,
+  },
+  // Referrals
+  REFERRALS: {
+    USER: (userId) => `/referrals/user/${userId}`,
+    SUMMARY: (userId) => `/referrals/user/${userId}/summary`,
+    BY_QUARTER: (userId) => `/referrals/user/${userId}/quarter`,
+    COMMISSION: (userId) => `/referrals/user/${userId}/commission`,
+    COMMISSION_SLABS: '/referrals/commission-slabs',
+    CREATE_SLAB: '/referrals/commission-slabs',
+    UPDATE_SLAB: (id) => `/referrals/commission-slabs/${id}`,
+    DELETE_SLAB: (id) => `/referrals/commission-slabs/${id}`,
+    ADMIN_QUARTER: '/referrals/admin/quarter',
+    MARK_PAID: (referralId) => `/referrals/admin/${referralId}/mark-paid`,
   },
 };
 

@@ -21,6 +21,7 @@ const SuperAdminDashboard = React.lazy(() => import("@/Pages/Dashboard/SuperAdmi
 // Admin Pages - User Management
 const AllUsers = React.lazy(() => import("@/Pages/Admin/UserManagement/AllUsers"));
 const CreateUser = React.lazy(() => import("@/Pages/Admin/UserManagement/CreateUser"));
+const EditUser = React.lazy(() => import("@/Pages/Admin/UserManagement/EditUser"));
 
 // Admin Pages - Admin Management
 const AllAdmins = React.lazy(() => import("@/Pages/Admin/AdminManagement/AllAdmins"));
@@ -31,6 +32,16 @@ const PermissionsManagement = React.lazy(() => import("@/Pages/Admin/AdminManage
 const Portfolio = React.lazy(() => import("@/Pages/Financial/Portfolio"));
 const Transactions = React.lazy(() => import("@/Pages/Financial/Transactions"));
 const Investments = React.lazy(() => import("@/Pages/Financial/Investments"));
+const Recommendations = React.lazy(() => import("@/Pages/Financial/Recommendations"));
+const Trades = React.lazy(() => import("@/Pages/Financial/Trades"));
+const Holdings = React.lazy(() => import("@/Pages/Financial/Holdings"));
+const Referrals = React.lazy(() => import("@/Pages/Financial/Referrals"));
+
+// Admin - Financial Management Pages
+const AdminRecommendations = React.lazy(() => import("@/Pages/Admin/Recommendations"));
+const AdminClientPL = React.lazy(() => import("@/Pages/Admin/ClientPL"));
+const AdminCommissionConfig = React.lazy(() => import("@/Pages/Admin/CommissionConfig"));
+const AdminReferralReports = React.lazy(() => import("@/Pages/Admin/ReferralReports"));
 
 // Existing Dashboard Pages (will be used for portfolio, investments, crypto)
 const Ecommerce = React.lazy(() => import("@/Pages/Dashboard/Ecommerce"));
@@ -46,6 +57,8 @@ const Invoice = React.lazy(() => import("@/Pages/Apps/Invoice"));
 // Authentication Pages
 const SignIn = React.lazy(() => import("@/Pages/AuthPages/SignIn"));
 const SignUp = React.lazy(() => import("@/Pages/AuthPages/SignUp"));
+const ForgotPassword = React.lazy(() => import("@/Pages/AuthPages/ForgotPassword"));
+const PasswordReset = React.lazy(() => import("@/Pages/AuthPages/PasswordReset"));
 
 // Error Pages
 const NotFound = React.lazy(() => import("@/Pages/ErrorPages/NotFound"));
@@ -83,6 +96,22 @@ const Routes = () => {
       element: (
         <PublicRoute>
           <SignUp />
+        </PublicRoute>
+      ),
+    },
+    {
+      path: AuthRoutes.AUTH_FORGOT_PASSWORD,
+      element: (
+        <PublicRoute>
+          <ForgotPassword />
+        </PublicRoute>
+      ),
+    },
+    {
+      path: AuthRoutes.AUTH_PASSWORD_RESET,
+      element: (
+        <PublicRoute>
+          <PasswordReset />
         </PublicRoute>
       ),
     },
@@ -132,6 +161,7 @@ const Routes = () => {
         // Admin - User Management Routes
         { path: "admin/users", element: <AllUsers /> },
         { path: "admin/users/create", element: <CreateUser /> },
+        { path: "admin/users/:userId", element: <EditUser /> },
 
         // Admin - Admin Management Routes (Super Admin Only)
         { path: "admin/admins", element: <AllAdmins /> },
@@ -142,6 +172,16 @@ const Routes = () => {
         { path: "financial/portfolio", element: <Portfolio /> },
         { path: "financial/transactions", element: <Transactions /> },
         { path: "financial/investments", element: <Investments /> },
+        { path: "financial/recommendations", element: <Recommendations /> },
+        { path: "financial/trades", element: <Trades /> },
+        { path: "financial/holdings", element: <Holdings /> },
+        { path: "financial/referrals", element: <Referrals /> },
+
+        // Admin - Financial Management Routes
+        { path: "admin/recommendations", element: <AdminRecommendations /> },
+        { path: "admin/client-pl", element: <AdminClientPL /> },
+        { path: "admin/commission-config", element: <AdminCommissionConfig /> },
+        { path: "admin/referral-reports", element: <AdminReferralReports /> },
       ],
     },
 

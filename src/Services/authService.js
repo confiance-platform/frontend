@@ -113,6 +113,58 @@ class AuthService {
   }
 
   /**
+   * Request password reset (sends email with reset link)
+   * @param {string} email - User email
+   * @returns {Promise} Response
+   */
+  async forgotPassword(email) {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
+        email,
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Reset password with token
+   * @param {string} token - Reset token from email
+   * @param {string} newPassword - New password
+   * @param {string} confirmPassword - Confirm new password
+   * @returns {Promise} Response
+   */
+  async resetPassword(token, newPassword, confirmPassword) {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+        token,
+        newPassword,
+        confirmPassword,
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Verify reset token validity
+   * @param {string} token - Reset token
+   * @returns {Promise} Response
+   */
+  async verifyResetToken(token) {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.AUTH.VERIFY_RESET_TOKEN, {
+        params: { token },
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Check if user is authenticated
    * @returns {boolean} Authentication status
    */

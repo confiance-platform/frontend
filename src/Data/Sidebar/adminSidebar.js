@@ -26,10 +26,24 @@ export const adminSidebarConfig = [
     ]
   },
   {
-    type: "single",
-    name: "Reports",
-    path: "/admin/reports",
-    iconClass: "ph-duotone ph-file-text"
+    type: "dropdown",
+    name: "Recommendations",
+    iconClass: "ph-duotone ph-lightbulb",
+    collapseId: "admin-recommendations",
+    children: [
+      { name: "Manage Recommendations", path: "/admin/recommendations" },
+      { name: "Client P&L", path: "/admin/client-pl" }
+    ]
+  },
+  {
+    type: "dropdown",
+    name: "Referral Management",
+    iconClass: "ph-duotone ph-users-three",
+    collapseId: "referral-management",
+    children: [
+      { name: "Commission Config", path: "/admin/commission-config" },
+      { name: "Referral Reports", path: "/admin/referral-reports" }
+    ]
   },
 
   // User Portal Section

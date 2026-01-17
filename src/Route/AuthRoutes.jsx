@@ -142,6 +142,7 @@ const AuthRoutes = {
   AUTH_SIGN_IN_IMG: "/auth/sign-in-img",
   AUTH_SIGN_UP: "/auth/sign-up",
   AUTH_SIGN_UP_IMG: "/auth/sign-up-img",
+  AUTH_FORGOT_PASSWORD: "/auth/forgot-password",
   AUTH_PASSWORD_RESET: "/auth/password-reset",
   AUTH_PASSWORD_RESET_IMG: "/auth/password-reset-img",
   AUTH_PASSWORD_CREATE: "/auth/password-create",

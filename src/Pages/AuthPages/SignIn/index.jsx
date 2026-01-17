@@ -40,16 +40,16 @@ const SignIn = () => {
       if (result.success) {
         // Get redirect path from location state
         const from = location.state?.from?.pathname;
-        const userRole = result.data?.user?.role;
+        const userRoles = result.data?.user?.roles || [];
 
         // If there's a specific "from" path, go there
         if (from && from !== "/") {
           navigate(from, { replace: true });
         } else {
           // Role-based redirect to appropriate dashboard
-          if (userRole === 'ROLE_SUPER_ADMIN') {
+          if (userRoles.includes('ROLE_SUPER_ADMIN')) {
             navigate("/dashboard/super-admin", { replace: true });
-          } else if (userRole === 'ROLE_ADMIN') {
+          } else if (userRoles.includes('ROLE_ADMIN')) {
             navigate("/dashboard/admin", { replace: true });
           } else {
             navigate("/dashboard/user", { replace: true });
@@ -147,7 +147,7 @@ const SignIn = () => {
                             Password
                           </label>
                           <Link
-                            to="/auth/password-reset"
+                            to="/auth/forgot-password"
                             className="link-primary float-end"
                           >
                             Forgot Password?

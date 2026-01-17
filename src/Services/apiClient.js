@@ -80,6 +80,26 @@ apiClient.interceptors.response.use(
       });
     }
 
+    // Handle 429 Rate Limit
+    if (error.response?.status === 429) {
+      const retryAfter = error.response.headers['retry-after'] ||
+                         error.response.data?.retryAfterSeconds ||
+                         60;
+
+      const errorResponse = {
+        success: false,
+        message: `Too many requests. Please wait ${retryAfter} seconds before trying again.`,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfterSeconds: parseInt(retryAfter, 10),
+        },
+        status: 429,
+        retryAfterSeconds: parseInt(retryAfter, 10),
+      };
+
+      return Promise.reject(errorResponse);
+    }
+
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
