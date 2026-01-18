@@ -73,6 +73,10 @@ const ForgotPassword = () => {
 
               <Col lg={6} className="form-contentbox">
                 <div className="form-container">
+                  <Link to="/" className="d-inline-flex align-items-center text-muted mb-3 text-decoration-none">
+                    <i className="ti ti-arrow-left me-2"></i>
+                    Back to Home
+                  </Link>
                   {success ? (
                     // Success State
                     <div className="text-center">

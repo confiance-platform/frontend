@@ -118,6 +118,10 @@ const SignUp = () => {
 
               <Col lg={6} className="form-contentbox" style={{ alignItems: 'flex-start' }}>
                 <div className="form-container">
+                  <Link to="/" className="d-inline-flex align-items-center text-muted mb-3 text-decoration-none">
+                    <i className="ti ti-arrow-left me-2"></i>
+                    Back to Home
+                  </Link>
                   <form className="app-form" onSubmit={handleSubmit(onSubmit)}>
                     <Row>
                       <Col xs={12}>

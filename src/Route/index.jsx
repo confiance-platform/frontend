@@ -1,5 +1,11 @@
 import React from "react";
-import { useRoutes, Navigate } from "react-router-dom";
+import { useRoutes, Navigate, useLocation } from "react-router-dom";
+
+// Redirect component to preserve query params from /reset-password to /auth/password-reset
+const ResetPasswordRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/auth/password-reset${location.search}`} replace />;
+};
 import {
   DashboardRoutes,
   AppsRoutes,
@@ -114,6 +120,11 @@ const Routes = () => {
           <PasswordReset />
         </PublicRoute>
       ),
+    },
+    // Redirect /reset-password to /auth/password-reset (for email links)
+    {
+      path: "/reset-password",
+      element: <ResetPasswordRedirect />,
     },
 
     // ERROR PAGES

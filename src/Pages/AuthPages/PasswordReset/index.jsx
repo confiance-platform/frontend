@@ -120,6 +120,10 @@ const PasswordReset = () => {
                 </Col>
                 <Col lg={6} className="form-contentbox">
                   <div className="form-container">
+                    <Link to="/" className="d-inline-flex align-items-center text-muted mb-3 text-decoration-none">
+                      <i className="ti ti-arrow-left me-2"></i>
+                      Back to Home
+                    </Link>
                     <div className="text-center py-5">
                       <div className="spinner-border text-primary mb-3" role="status">
                         <span className="visually-hidden">Loading...</span>
@@ -166,6 +170,10 @@ const PasswordReset = () => {
 
               <Col lg={6} className="form-contentbox">
                 <div className="form-container">
+                  <Link to="/" className="d-inline-flex align-items-center text-muted mb-3 text-decoration-none">
+                    <i className="ti ti-arrow-left me-2"></i>
+                    Back to Home
+                  </Link>
                   {success ? (
                     // Success State
                     <div className="text-center">
