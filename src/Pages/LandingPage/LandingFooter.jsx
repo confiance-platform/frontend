@@ -16,7 +16,7 @@ const LandingFooter = () => {
         <div className="row g-4 pb-4">
           {/* Company Info */}
           <div className="col-lg-4 col-md-6">
-            <h4 className="fw-bold mb-3">Confiance</h4>
+            <img src="/logo.png" alt="Confiance" className="mb-3" style={{ height: 56, width: "auto" }} />
             <p className="text-white-50 mb-3">
               Your trusted partner in wealth management. Build, grow, and
               protect your financial future with confidence.

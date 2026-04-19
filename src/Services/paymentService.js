@@ -134,7 +134,7 @@ class PaymentService {
         currency: order.currency || 'INR',
         name: options.companyName || 'Confiance Financial',
         description: options.description || 'Payment',
-        image: options.logo || '/assets/images/logo/1.png',
+        image: options.logo || '/logo.png',
         order_id: order.razorpayOrderId,
 
         handler: async (response) => {

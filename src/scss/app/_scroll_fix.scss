@@ -1,0 +1,23 @@
+// Scroll overrides for the vendor theme.
+// The prebuilt public/assets/css/style.css sets:
+//   .app-wrapper .app-content { height: 100%; overflow: hidden; }
+// which clips any page taller than the viewport — admin tables, recommendations,
+// signup form, etc. Let the content area grow and the page scroll normally.
+
+.app-wrapper .app-content {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+// Auth pages render outside the app-wrapper. They use .login-form-container
+// which is flex column with min-height:100vh — that's fine, but make sure
+// the outer html/body never clip vertically.
+html, body {
+  overflow-y: auto;
+}
+
+.login-form-container {
+  height: auto !important;
+  padding: 24px 0;
+}

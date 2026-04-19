@@ -176,7 +176,7 @@ const LandingPage = () => {
                     <div className="container-fluid">
                         {/* Logo */}
                         <a className="navbar-brand logo" href="#home">
-                            <img src="/assets/images/logo/1.png" alt="#" />
+                            <img src="/logo.png" alt="#" />
                         </a>
 
                         {/* Toggler */}
@@ -294,7 +294,7 @@ const LandingPage = () => {
                                                 alt="img"
                                             />
                                             <img
-                                                src="/assets/images/logo/3.png"
+                                                src="/logo.png"
                                                 alt="img"
                                                 className="bg-light-primary p-4 b-r-50 b-1-primary"
                                             />
@@ -657,7 +657,7 @@ const LandingPage = () => {
                     <Row>
                         <Col>
                             <div className="footer-content text-center">
-                                <img src="/assets/images/logo/3.png" alt="logo" />
+                                <img src="/logo.png" alt="logo" />
                                 <h1>
                                     Build a <span className="highlight-title"> Startling </span> site
                                 </h1>

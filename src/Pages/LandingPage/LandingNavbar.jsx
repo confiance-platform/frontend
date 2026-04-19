@@ -23,8 +23,8 @@ const LandingNavbar = () => {
       transition={{ duration: 0.5 }}
     >
       <div className="container">
-        <Link className="navbar-brand fw-bold fs-3" to="/">
-          <span className="text-primary">Confiance</span>
+        <Link className="navbar-brand d-inline-flex align-items-center" to="/">
+          <img src="/logo.png" alt="Confiance" style={{ height: 44, width: "auto" }} />
         </Link>
 
         <button

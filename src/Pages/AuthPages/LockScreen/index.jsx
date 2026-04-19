@@ -13,7 +13,7 @@ const LockScreen = () => {
                                 <div className="form-container">
                                     <div className="signup-content mt-4">
                   <span>
-                    <img src="../assets/images/logo/1.png" alt="avtar" className="img-fluid "/>
+                    <img src="/logo.png" alt="avtar" className="img-fluid "/>
                   </span>
                                     </div>
                                     <div className="signup-bg-img">

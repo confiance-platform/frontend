@@ -61,6 +61,15 @@ class UserService {
   }
 
   /**
+   * Set the user's profile image URL (after uploading the file via fileService).
+   * @param {number} userId
+   * @param {string|null} profileImageUrl  null / "" clears the avatar
+   */
+  async updateProfileImage(userId, profileImageUrl) {
+    return apiClient.patch(`/users/${userId}/profile-image`, { profileImageUrl });
+  }
+
+  /**
    * Delete user
    * @param {number} userId - User ID
    * @returns {Promise} Delete response

@@ -33,7 +33,7 @@ const Cheatsheet = () => {
             <Row>
                 <Col xs={12}>
                     <div className="cheatsheet-header">
-                        <img src="/assets/images/logo/03.png" alt=""/>
+                        <img src="/logo.png" alt=""/>
                         <h2>Your Ultimate Cheatsheet</h2>
                         <div className="search-div">
                             <div className="input-group b-r-search">

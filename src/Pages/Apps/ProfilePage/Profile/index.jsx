@@ -1,14 +1,15 @@
 // User Profile Page - View and Edit Profile
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { userService } from '@/Services';
+import { userService, fileService } from '@/Services';
 import { toast } from 'react-toastify';
 import {
   FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt,
   FaEdit, FaSave, FaTimes, FaSpinner, FaUserCircle,
-  FaCalendar, FaShieldAlt, FaCheckCircle
+  FaCalendar, FaShieldAlt, FaCheckCircle, FaCamera, FaTrash
 } from 'react-icons/fa';
 import { Container, Row, Col, Card, CardBody, Nav, NavItem, NavLink, TabContent, TabPane } from 'reactstrap';
+import { resolveImageUrl } from '@/utils/imageUrl';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -27,6 +28,66 @@ const Profile = () => {
     address: '',
     postalCode: ''
   });
+
+  // Avatar upload
+  const avatarInputRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarPick = () => avatarInputRef.current?.click();
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be under 10 MB');
+      return;
+    }
+    try {
+      setAvatarUploading(true);
+      const upload = await fileService.uploadImage(file, {
+        userId: user.id,
+        folder: `avatars/${user.id}`,
+        entityType: 'user',
+        entityId: user.id,
+      });
+      const url = upload?.data?.secureUrl || upload?.data?.url
+                || upload?.secureUrl || upload?.url;
+      if (!url) throw new Error('Upload succeeded but no URL returned');
+
+      const save = await userService.updateProfileImage(user.id, url);
+      const saved = save?.data || save;
+      setUserData(prev => ({ ...(prev || {}), profileImageUrl: saved?.profileImageUrl || url }));
+      if (typeof updateUser === 'function') {
+        updateUser({ ...(user || {}), profileImageUrl: saved?.profileImageUrl || url });
+      }
+      toast.success('Profile picture updated');
+    } catch (err) {
+      toast.error(err?.message || 'Avatar upload failed');
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    try {
+      setAvatarUploading(true);
+      await userService.updateProfileImage(user.id, '');
+      setUserData(prev => ({ ...(prev || {}), profileImageUrl: null }));
+      if (typeof updateUser === 'function') {
+        updateUser({ ...(user || {}), profileImageUrl: null });
+      }
+      toast.success('Profile picture removed');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to remove avatar');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   useEffect(() => {
     fetchUserProfile();
@@ -176,10 +237,50 @@ const Profile = () => {
         <Col lg={4} className="mb-4">
           <Card className="border-0 shadow-sm">
             <CardBody className="text-center">
-              <div className="mb-4">
-                <div className="avatar-xl bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px', fontSize: '48px' }}>
-                  <FaUserCircle />
-                </div>
+              <div className="mb-4 position-relative d-inline-block">
+                {userData?.profileImageUrl ? (
+                  <img
+                    src={resolveImageUrl(userData.profileImageUrl)}
+                    alt="Profile"
+                    className="rounded-circle"
+                    style={{ width: 120, height: 120, objectFit: 'cover' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="avatar-xl bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center"
+                       style={{ width: '120px', height: '120px', fontSize: '48px' }}>
+                    <FaUserCircle />
+                  </div>
+                )}
+
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary rounded-circle position-absolute"
+                  onClick={handleAvatarPick}
+                  disabled={avatarUploading}
+                  title="Change profile picture"
+                  style={{ bottom: 0, right: 0, width: 36, height: 36, padding: 0 }}
+                >
+                  {avatarUploading ? <FaSpinner className="fa-spin" /> : <FaCamera />}
+                </button>
+                {userData?.profileImageUrl && !avatarUploading && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-light rounded-circle position-absolute border"
+                    onClick={handleAvatarRemove}
+                    title="Remove profile picture"
+                    style={{ top: 0, right: 0, width: 28, height: 28, padding: 0 }}
+                  >
+                    <FaTrash className="text-danger" style={{ fontSize: 12 }} />
+                  </button>
+                )}
               </div>
 
               <h4 className="mb-1">{userData?.firstName} {userData?.lastName}</h4>

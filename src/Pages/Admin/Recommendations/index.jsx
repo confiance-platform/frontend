@@ -1,401 +1,213 @@
-// Admin Recommendations Management Page
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { recommendationService } from '@/Services';
+// Admin Recommendations — xlsx ingestion + browse (Rec Log / Long Term tabs)
+// The admin uploads Confiance_Stock_Recommendations.xlsx; the server parses
+// "Rec Log" (cols B..M) and "LongTerm" (cols C, F, D, E) into normalised
+// tables with duplicate prevention (Rec Log: symbol+date+entry, Long Term: symbol).
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Container, Row, Col, Card, CardBody, Badge } from 'reactstrap';
 import { toast } from 'react-toastify';
 import {
-  FaSearch, FaSpinner, FaPlus, FaEdit, FaTrash, FaArrowUp, FaArrowDown,
-  FaCheckCircle, FaClock, FaTimes, FaFilter, FaExclamationTriangle
+  FaSearch, FaSpinner, FaUpload, FaFileExcel,
+  FaTimesCircle, FaArrowUp, FaArrowDown, FaTimes
 } from 'react-icons/fa';
-import { Container, Row, Col, Card, CardBody, Badge, Modal, ModalHeader, ModalBody, ModalFooter } from 'reactstrap';
-import { MARKETS, MARKET_LABELS, TRADE_TYPES, TRADE_TYPE_LABELS, RECOMMENDATION_STATUS } from '@/config/constants';
 import RoleGate from '@/Components/RoleGate';
+import { recommendationService } from '@/Services';
+
+const SHEET_REC_LOG = 'rec-log';
+const SHEET_LONG_TERM = 'long-term';
+
+const STATUS_OPTIONS_REC_LOG = [
+  { value: '', label: 'All statuses' },
+  { value: 'Open', label: 'Open' },
+  { value: 'Closed', label: 'Closed' },
+  { value: 'Partially', label: 'Partially' }
+];
+
+const fmt = (v, digits = 2) => {
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  });
+};
+
+const fmtDate = (v) => (v ? String(v).slice(0, 10) : '—');
+
+const statusBadge = (status) => {
+  const s = (status || '').toLowerCase();
+  let color = 'secondary';
+  if (s === 'open') color = 'primary';
+  else if (s === 'closed') color = 'success';
+  else if (s === 'partially') color = 'warning';
+  return <Badge color={color} pill>{status || '—'}</Badge>;
+};
 
 const AdminRecommendations = () => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [recommendations, setRecommendations] = useState([]);
+  const [activeSheet, setActiveSheet] = useState(SHEET_REC_LOG);
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({
     pageNumber: 0,
-    pageSize: 20,
+    pageSize: 25,
     totalElements: 0,
     totalPages: 0
   });
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [marketFilter, setMarketFilter] = useState('');
+  // Rec Log filters
   const [statusFilter, setStatusFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [remarksFilter, setRemarksFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Form Modal
-  const [showModal, setShowModal] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [selectedRec, setSelectedRec] = useState(null);
-  const [form, setForm] = useState({
-    market: 'INDIA',
-    currency: 'INR',
-    tickerSymbol: '',
-    companyName: '',
-    tradeType: 'POSITIONAL',
-    recommendationDate: new Date().toISOString().split('T')[0],
-    entryPrice: '',
-    targetPrice: '',
-    stopLoss: '',
-    status: 'OPEN',
-    remarks: ''
-  });
+  // Upload state
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [lastUpload, setLastUpload] = useState(null);
 
-  // Delete Confirmation
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
+  const resetFilters = () => {
+    setStatusFilter('');
+    setFromDate('');
+    setToDate('');
+    setRemarksFilter('');
+    setSearchTerm('');
+    setPagination(p => ({ ...p, pageNumber: 0 }));
+  };
 
-  useEffect(() => {
-    fetchRecommendations();
-  }, [pagination.pageNumber, marketFilter, statusFilter]);
+  const switchSheet = (sheetId) => {
+    setActiveSheet(sheetId);
+    resetFilters();
+    setRows([]);
+  };
 
-  const fetchRecommendations = async () => {
+  const fetchPage = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await recommendationService.filterRecommendations(
-        { market: marketFilter || undefined, status: statusFilter || undefined },
-        { page: pagination.pageNumber, size: pagination.pageSize }
-      );
-
-      if (response.success && response.data) {
-        setRecommendations(response.data.content || []);
-        setPagination({
-          pageNumber: response.data.pageable?.pageNumber || 0,
-          pageSize: response.data.pageable?.pageSize || 20,
-          totalElements: response.data.totalElements || 0,
-          totalPages: response.data.totalPages || 0
-        });
+      const pageParams = { page: pagination.pageNumber, size: pagination.pageSize };
+      let resp;
+      if (activeSheet === SHEET_REC_LOG) {
+        resp = await recommendationService.getRecLog({
+          status: statusFilter || undefined,
+          from: fromDate || undefined,
+          to: toDate || undefined,
+          remarks: remarksFilter || undefined,
+          search: searchTerm || undefined
+        }, pageParams);
+      } else {
+        resp = await recommendationService.getLongTerm({
+          status: statusFilter || undefined,
+          search: searchTerm || undefined
+        }, pageParams);
       }
-    } catch (error) {
-      console.error('Error fetching recommendations:', error);
-      toast.error(error.message || 'Failed to load recommendations');
+
+      const page = resp || {};
+      setRows(page.content || []);
+      setPagination(p => ({
+        ...p,
+        totalElements: page.totalElements ?? 0,
+        totalPages: page.totalPages ?? 0
+      }));
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load recommendations');
+      setRows([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeSheet, pagination.pageNumber, pagination.pageSize,
+      statusFilter, fromDate, toDate, remarksFilter, searchTerm]);
 
-  const resetForm = () => {
-    setForm({
-      market: 'INDIA',
-      currency: 'INR',
-      tickerSymbol: '',
-      companyName: '',
-      tradeType: 'POSITIONAL',
-      recommendationDate: new Date().toISOString().split('T')[0],
-      entryPrice: '',
-      targetPrice: '',
-      stopLoss: '',
-      status: 'OPEN',
-      remarks: ''
-    });
-    setEditMode(false);
-    setSelectedRec(null);
-  };
+  useEffect(() => { fetchPage(); }, [fetchPage]);
 
-  const handleCreateClick = () => {
-    resetForm();
-    setShowModal(true);
-  };
-
-  const handleEditClick = (rec) => {
-    setSelectedRec(rec);
-    setEditMode(true);
-    setForm({
-      market: rec.market || 'INDIA',
-      currency: rec.currency || 'INR',
-      tickerSymbol: rec.tickerSymbol || '',
-      companyName: rec.companyName || '',
-      tradeType: rec.tradeType || 'POSITIONAL',
-      recommendationDate: rec.recommendationDate || new Date().toISOString().split('T')[0],
-      entryPrice: rec.entryPrice || '',
-      targetPrice: rec.targetPrice || '',
-      stopLoss: rec.stopLoss || '',
-      status: rec.status || 'OPEN',
-      remarks: rec.remarks || ''
-    });
-    setShowModal(true);
-  };
-
-  const handleDeleteClick = (id) => {
-    setDeleteId(id);
-    setShowDeleteModal(true);
-  };
-
-  const handleSubmit = async () => {
-    if (!form.tickerSymbol || !form.entryPrice || !form.targetPrice || !form.stopLoss) {
-      toast.error('Please fill all required fields');
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ok = file.name.toLowerCase().endsWith('.xlsx')
+      || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if (!ok) {
+      toast.error('Please select a .xlsx file');
       return;
     }
-
+    setUploading(true);
+    setLastUpload(null);
     try {
-      setSubmitting(true);
-      let response;
-
-      if (editMode && selectedRec) {
-        response = await recommendationService.updateRecommendation(selectedRec.id, form);
-      } else {
-        response = await recommendationService.createRecommendation(form);
-      }
-
-      if (response.success) {
-        toast.success(editMode ? 'Recommendation updated successfully!' : 'Recommendation created successfully!');
-        setShowModal(false);
-        resetForm();
-        fetchRecommendations();
-      }
-    } catch (error) {
-      console.error('Error saving recommendation:', error);
-      toast.error(error.message || 'Failed to save recommendation');
+      const res = await recommendationService.uploadXlsx(file);
+      setLastUpload(res);
+      const ins = (res.recLogInserted || 0) + (res.longTermInserted || 0);
+      const upd = (res.recLogUpdated || 0) + (res.longTermUpdated || 0);
+      toast.success(`Imported — ${ins} new, ${upd} updated`);
+      setPagination(p => ({ ...p, pageNumber: 0 }));
+      fetchPage();
+    } catch (err) {
+      toast.error(err?.message || 'Upload failed');
     } finally {
-      setSubmitting(false);
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      setSubmitting(true);
-      const response = await recommendationService.deleteRecommendation(deleteId);
+  const statusOptionsLongTerm = useMemo(() => {
+    const set = new Set();
+    rows.forEach(r => { if (r.status) set.add(r.status); });
+    return [{ value: '', label: 'All statuses' },
+      ...Array.from(set).sort().map(s => ({ value: s, label: s }))];
+  }, [rows]);
 
-      if (response.success) {
-        toast.success('Recommendation deleted successfully!');
-        setShowDeleteModal(false);
-        setDeleteId(null);
-        fetchRecommendations();
-      }
-    } catch (error) {
-      console.error('Error deleting recommendation:', error);
-      toast.error(error.message || 'Failed to delete recommendation');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const formatCurrency = (amount, currency = 'INR') => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2
-    }).format(parseFloat(amount || 0));
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      OPEN: { color: 'success', text: 'Open' },
-      CLOSED: { color: 'secondary', text: 'Closed' },
-      PARTIALLY_SOLD: { color: 'warning', text: 'Partial' },
-      EXPIRED: { color: 'danger', text: 'Expired' }
-    };
-    const config = statusConfig[status] || statusConfig.OPEN;
-    return <Badge color={config.color}>{config.text}</Badge>;
-  };
-
-  const getMarketFlag = (market) => {
-    const flags = {
-      US: '🇺🇸', INDIA: '🇮🇳', UK: '🇬🇧', EU: '🇪🇺', SINGAPORE: '🇸🇬',
-      HONG_KONG: '🇭🇰', JAPAN: '🇯🇵', CANADA: '🇨🇦', AUSTRALIA: '🇦🇺'
-    };
-    return flags[market] || '🌍';
-  };
-
-  const getCurrencyByMarket = (market) => {
-    const currencies = {
-      US: 'USD', INDIA: 'INR', UK: 'GBP', EU: 'EUR', SINGAPORE: 'SGD',
-      HONG_KONG: 'HKD', JAPAN: 'JPY', CANADA: 'CAD', AUSTRALIA: 'AUD'
-    };
-    return currencies[market] || 'INR';
-  };
-
-  const calculateRiskReward = () => {
-    if (form.entryPrice && form.targetPrice && form.stopLoss) {
-      const entry = parseFloat(form.entryPrice);
-      const target = parseFloat(form.targetPrice);
-      const stop = parseFloat(form.stopLoss);
-      const reward = target - entry;
-      const risk = entry - stop;
-      if (risk > 0) {
-        return (reward / risk).toFixed(2);
-      }
-    }
-    return 'N/A';
-  };
-
-  const filteredRecommendations = recommendations.filter(rec => {
-    const matchesSearch =
-      rec.tickerSymbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rec.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
-  const handlePageChange = (newPage) => {
-    setPagination(prev => ({ ...prev, pageNumber: newPage }));
-  };
-
-  if (loading && recommendations.length === 0) {
-    return (
-      <Container fluid>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
-          <div className="text-center">
-            <FaSpinner className="fa-spin fs-1 text-primary mb-3" />
-            <p className="text-muted">Loading recommendations...</p>
-          </div>
-        </div>
-      </Container>
-    );
-  }
+  const statusOptions = activeSheet === SHEET_REC_LOG
+    ? STATUS_OPTIONS_REC_LOG
+    : statusOptionsLongTerm;
 
   return (
-    <RoleGate allowedRoles={['ROLE_ADMIN', 'ROLE_SUPER_ADMIN']}>
-      <Container fluid>
-        {/* Header */}
-        <Row className="mb-4">
-          <Col xs={12}>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <h4 className="mb-1">Recommendation Management</h4>
-                <p className="text-muted mb-0">Create and manage stock recommendations</p>
-              </div>
-              <button className="btn btn-primary" onClick={handleCreateClick}>
-                <FaPlus className="me-2" />
-                Create Recommendation
-              </button>
-            </div>
-          </Col>
-        </Row>
-
-        {/* Filters */}
-        <Row className="mb-4">
+    <RoleGate roles={["ROLE_ADMIN", "ROLE_SUPER_ADMIN"]}>
+      <Container fluid className="py-4">
+        <Row className="g-3 mb-3">
           <Col xs={12}>
             <Card className="border-0 shadow-sm">
               <CardBody>
-                <Row className="g-3">
-                  <Col md={4}>
-                    <div className="position-relative">
-                      <FaSearch className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
-                      <input
-                        type="text"
-                        className="form-control ps-5"
-                        placeholder="Search by symbol or company..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
+                <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                  <div>
+                    <h4 className="mb-1">Stock Recommendations</h4>
+                    <div className="text-muted small">
+                      Upload <code>Confiance_Stock_Recommendations.xlsx</code> — the server
+                      parses the <b>Rec Log</b> and <b>LongTerm</b> sheets and stores them
+                      with duplicate protection.
                     </div>
-                  </Col>
-                  <Col md={4}>
-                    <select
-                      className="form-select"
-                      value={marketFilter}
-                      onChange={(e) => setMarketFilter(e.target.value)}
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      onChange={handleUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
                     >
-                      <option value="">All Markets</option>
-                      {Object.entries(MARKETS).map(([key, value]) => (
-                        <option key={value} value={value}>
-                          {getMarketFlag(value)} {MARKET_LABELS[value]}
-                        </option>
-                      ))}
-                    </select>
-                  </Col>
-                  <Col md={4}>
-                    <select
-                      className="form-select"
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                      <option value="">All Status</option>
-                      {Object.entries(RECOMMENDATION_STATUS).map(([key, value]) => (
-                        <option key={value} value={value}>{key.replace(/_/g, ' ')}</option>
-                      ))}
-                    </select>
-                  </Col>
-                </Row>
-              </CardBody>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Recommendations Table */}
-        <Row>
-          <Col xs={12}>
-            <Card className="border-0 shadow-sm">
-              <CardBody>
-                {filteredRecommendations.length === 0 ? (
-                  <div className="text-center py-5">
-                    <FaExclamationTriangle className="fs-1 text-muted mb-3" />
-                    <h5 className="text-muted">No recommendations found</h5>
-                    <p className="text-muted mb-3">Create your first recommendation</p>
-                    <button className="btn btn-primary" onClick={handleCreateClick}>
-                      <FaPlus className="me-2" />
-                      Create Recommendation
+                      {uploading
+                        ? <><FaSpinner className="fa-spin me-2" /> Uploading…</>
+                        : <><FaUpload className="me-2" /> Upload .xlsx</>
+                      }
                     </button>
                   </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Market</th>
-                          <th>Symbol / Company</th>
-                          <th>Trade Type</th>
-                          <th>Entry</th>
-                          <th>Target</th>
-                          <th>Stop Loss</th>
-                          <th>R:R</th>
-                          <th>Status</th>
-                          <th>Date</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredRecommendations.map((rec) => (
-                          <tr key={rec.id}>
-                            <td>
-                              <span className="fs-4 me-1">{getMarketFlag(rec.market)}</span>
-                              <small>{rec.market}</small>
-                            </td>
-                            <td>
-                              <strong>{rec.tickerSymbol}</strong>
-                              <div className="small text-muted">{rec.companyName}</div>
-                            </td>
-                            <td>
-                              <Badge color="info">{TRADE_TYPE_LABELS[rec.tradeType] || rec.tradeType}</Badge>
-                            </td>
-                            <td>{formatCurrency(rec.entryPrice, rec.currency)}</td>
-                            <td className="text-success">{formatCurrency(rec.targetPrice, rec.currency)}</td>
-                            <td className="text-danger">{formatCurrency(rec.stopLoss, rec.currency)}</td>
-                            <td><Badge color="secondary">{rec.riskRewardRatio || 'N/A'}</Badge></td>
-                            <td>{getStatusBadge(rec.status)}</td>
-                            <td>{formatDate(rec.recommendationDate)}</td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-outline-primary me-2"
-                                onClick={() => handleEditClick(rec)}
-                              >
-                                <FaEdit />
-                              </button>
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => handleDeleteClick(rec.id)}
-                              >
-                                <FaTrash />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                </div>
+
+                {lastUpload && (
+                  <div className="alert alert-info mt-3 mb-0 small">
+                    <div><FaFileExcel className="me-2" /><b>{lastUpload.fileName}</b></div>
+                    <div className="mt-1">
+                      Rec Log: <b>{lastUpload.recLogInserted}</b> inserted, <b>{lastUpload.recLogUpdated}</b> updated,{' '}
+                      <b>{lastUpload.recLogSkipped || 0}</b> skipped ·
+                      &nbsp;LongTerm: <b>{lastUpload.longTermInserted}</b> inserted, <b>{lastUpload.longTermUpdated}</b> updated,{' '}
+                      <b>{lastUpload.longTermSkipped || 0}</b> skipped
+                    </div>
+                    {lastUpload.errors?.length > 0 && (
+                      <div className="mt-1 text-warning">
+                        <FaTimesCircle className="me-1" /> {lastUpload.errors.join('; ')}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardBody>
@@ -403,236 +215,228 @@ const AdminRecommendations = () => {
           </Col>
         </Row>
 
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <Row className="mt-4">
-            <Col xs={12}>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted">
-                  Showing {filteredRecommendations.length} of {pagination.totalElements}
-                </span>
-                <nav>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${pagination.pageNumber === 0 ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => handlePageChange(pagination.pageNumber - 1)}>
-                        Previous
-                      </button>
-                    </li>
-                    {[...Array(Math.min(pagination.totalPages, 5))].map((_, index) => (
-                      <li key={index} className={`page-item ${pagination.pageNumber === index ? 'active' : ''}`}>
-                        <button className="page-link" onClick={() => handlePageChange(index)}>
-                          {index + 1}
-                        </button>
-                      </li>
-                    ))}
-                    <li className={`page-item ${pagination.pageNumber === pagination.totalPages - 1 ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => handlePageChange(pagination.pageNumber + 1)}>
-                        Next
-                      </button>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            </Col>
-          </Row>
-        )}
-
-        {/* Create/Edit Modal */}
-        <Modal isOpen={showModal} toggle={() => setShowModal(false)} size="lg">
-          <ModalHeader toggle={() => setShowModal(false)}>
-            {editMode ? 'Edit Recommendation' : 'Create New Recommendation'}
-          </ModalHeader>
-          <ModalBody>
-            <Row className="g-3">
-              <Col md={6}>
-                <label className="form-label">Market *</label>
-                <select
-                  className="form-select"
-                  value={form.market}
-                  onChange={(e) => {
-                    const market = e.target.value;
-                    setForm(prev => ({
-                      ...prev,
-                      market,
-                      currency: getCurrencyByMarket(market)
-                    }));
-                  }}
-                >
-                  {Object.entries(MARKETS).map(([key, value]) => (
-                    <option key={value} value={value}>
-                      {getMarketFlag(value)} {MARKET_LABELS[value]}
-                    </option>
-                  ))}
-                </select>
-              </Col>
-              <Col md={6}>
-                <label className="form-label">Trade Type *</label>
-                <select
-                  className="form-select"
-                  value={form.tradeType}
-                  onChange={(e) => setForm(prev => ({ ...prev, tradeType: e.target.value }))}
-                >
-                  {Object.entries(TRADE_TYPES).map(([key, value]) => (
-                    <option key={value} value={value}>{TRADE_TYPE_LABELS[value]}</option>
-                  ))}
-                </select>
-              </Col>
-              <Col md={6}>
-                <label className="form-label">Ticker Symbol *</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g., RELIANCE, AAPL"
-                  value={form.tickerSymbol}
-                  onChange={(e) => setForm(prev => ({ ...prev, tickerSymbol: e.target.value.toUpperCase() }))}
-                />
-              </Col>
-              <Col md={6}>
-                <label className="form-label">Company Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g., Reliance Industries Ltd"
-                  value={form.companyName}
-                  onChange={(e) => setForm(prev => ({ ...prev, companyName: e.target.value }))}
-                />
-              </Col>
-              <Col md={6}>
-                <label className="form-label">Recommendation Date *</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={form.recommendationDate}
-                  onChange={(e) => setForm(prev => ({ ...prev, recommendationDate: e.target.value }))}
-                />
-              </Col>
-              <Col md={6}>
-                <label className="form-label">Status</label>
-                <select
-                  className="form-select"
-                  value={form.status}
-                  onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))}
-                >
-                  {Object.entries(RECOMMENDATION_STATUS).map(([key, value]) => (
-                    <option key={value} value={value}>{key.replace(/_/g, ' ')}</option>
-                  ))}
-                </select>
-              </Col>
-              <Col md={4}>
-                <label className="form-label">Entry Price *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  placeholder="0.00"
-                  value={form.entryPrice}
-                  onChange={(e) => setForm(prev => ({ ...prev, entryPrice: e.target.value }))}
-                />
-              </Col>
-              <Col md={4}>
-                <label className="form-label">Target Price *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  placeholder="0.00"
-                  value={form.targetPrice}
-                  onChange={(e) => setForm(prev => ({ ...prev, targetPrice: e.target.value }))}
-                />
-              </Col>
-              <Col md={4}>
-                <label className="form-label">Stop Loss *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  placeholder="0.00"
-                  value={form.stopLoss}
-                  onChange={(e) => setForm(prev => ({ ...prev, stopLoss: e.target.value }))}
-                />
-              </Col>
-              <Col md={12}>
-                <label className="form-label">Remarks / Notes</label>
-                <textarea
-                  className="form-control"
-                  rows="3"
-                  placeholder="Any notes or trading strategy..."
-                  value={form.remarks}
-                  onChange={(e) => setForm(prev => ({ ...prev, remarks: e.target.value }))}
-                />
-              </Col>
-            </Row>
-
-            {form.entryPrice && form.targetPrice && form.stopLoss && (
-              <div className="alert alert-info mt-3">
-                <Row>
-                  <Col md={4} className="text-center">
-                    <div className="small">Potential Return</div>
-                    <strong className="text-success">
-                      +{((parseFloat(form.targetPrice) - parseFloat(form.entryPrice)) / parseFloat(form.entryPrice) * 100).toFixed(2)}%
-                    </strong>
+        <Row className="g-3 mb-3">
+          <Col xs={12}>
+            <Card className="border-0 shadow-sm">
+              <CardBody>
+                <Row className="g-2 align-items-end">
+                  <Col md={3} sm={6}>
+                    <label className="form-label small mb-1">Sheet</label>
+                    <select
+                      className="form-select"
+                      value={activeSheet}
+                      onChange={(e) => switchSheet(e.target.value)}
+                    >
+                      <option value={SHEET_REC_LOG}>Rec Log</option>
+                      <option value={SHEET_LONG_TERM}>Long Term</option>
+                    </select>
                   </Col>
-                  <Col md={4} className="text-center">
-                    <div className="small">Max Risk</div>
-                    <strong className="text-danger">
-                      -{((parseFloat(form.entryPrice) - parseFloat(form.stopLoss)) / parseFloat(form.entryPrice) * 100).toFixed(2)}%
-                    </strong>
+
+                  <Col md={2} sm={6}>
+                    <label className="form-label small mb-1">Status</label>
+                    <select
+                      className="form-select"
+                      value={statusFilter}
+                      onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        setPagination(p => ({ ...p, pageNumber: 0 }));
+                      }}
+                    >
+                      {statusOptions.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </Col>
-                  <Col md={4} className="text-center">
-                    <div className="small">Risk:Reward Ratio</div>
-                    <strong>{calculateRiskReward()}</strong>
+
+                  {activeSheet === SHEET_REC_LOG && (
+                    <>
+                      <Col md={2} sm={6}>
+                        <label className="form-label small mb-1">From</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={fromDate}
+                          onChange={(e) => {
+                            setFromDate(e.target.value);
+                            setPagination(p => ({ ...p, pageNumber: 0 }));
+                          }}
+                        />
+                      </Col>
+                      <Col md={2} sm={6}>
+                        <label className="form-label small mb-1">To</label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={toDate}
+                          onChange={(e) => {
+                            setToDate(e.target.value);
+                            setPagination(p => ({ ...p, pageNumber: 0 }));
+                          }}
+                        />
+                      </Col>
+                      <Col md={2} sm={6}>
+                        <label className="form-label small mb-1">Remarks contains</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. booked gains"
+                          value={remarksFilter}
+                          onChange={(e) => setRemarksFilter(e.target.value)}
+                          onBlur={() => setPagination(p => ({ ...p, pageNumber: 0 }))}
+                        />
+                      </Col>
+                    </>
+                  )}
+
+                  <Col md={activeSheet === SHEET_REC_LOG ? 1 : 5} sm={6}>
+                    <label className="form-label small mb-1">Search</label>
+                    <div className="position-relative">
+                      <FaSearch className="position-absolute" style={{ top: 12, left: 10, color: '#888' }} />
+                      <input
+                        type="text"
+                        className="form-control ps-4"
+                        placeholder="Symbol…"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onBlur={() => setPagination(p => ({ ...p, pageNumber: 0 }))}
+                      />
+                    </div>
+                  </Col>
+
+                  <Col xs="auto">
+                    <button
+                      className="btn btn-outline-secondary"
+                      onClick={resetFilters}
+                      title="Clear filters"
+                    >
+                      <FaTimes className="me-1" /> Clear
+                    </button>
                   </Col>
                 </Row>
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <button className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={submitting}>
-              Cancel
-            </button>
-            <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? (
-                <>
-                  <FaSpinner className="fa-spin me-2" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <FaCheckCircle className="me-2" />
-                  {editMode ? 'Update' : 'Create'}
-                </>
-              )}
-            </button>
-          </ModalFooter>
-        </Modal>
+              </CardBody>
+            </Card>
+          </Col>
+        </Row>
 
-        {/* Delete Confirmation Modal */}
-        <Modal isOpen={showDeleteModal} toggle={() => setShowDeleteModal(false)}>
-          <ModalHeader toggle={() => setShowDeleteModal(false)}>
-            Confirm Delete
-          </ModalHeader>
-          <ModalBody>
-            <p>Are you sure you want to delete this recommendation? This action cannot be undone.</p>
-          </ModalBody>
-          <ModalFooter>
-            <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)} disabled={submitting}>
-              Cancel
-            </button>
-            <button className="btn btn-danger" onClick={handleDelete} disabled={submitting}>
-              {submitting ? (
-                <>
-                  <FaSpinner className="fa-spin me-2" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <FaTrash className="me-2" />
-                  Delete
-                </>
-              )}
-            </button>
-          </ModalFooter>
-        </Modal>
+        <Row className="g-3">
+          <Col xs={12}>
+            <Card className="border-0 shadow-sm">
+              <CardBody className="p-0">
+                <div className="table-responsive">
+                  {loading ? (
+                    <div className="text-center py-5">
+                      <FaSpinner className="fa-spin text-primary" size={32} />
+                      <div className="mt-2 text-muted">Loading…</div>
+                    </div>
+                  ) : rows.length === 0 ? (
+                    <div className="text-center py-5 text-muted">
+                      <FaFileExcel size={32} className="mb-2" />
+                      <div>No rows to show. Upload an xlsx to populate.</div>
+                    </div>
+                  ) : activeSheet === SHEET_REC_LOG ? (
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Market</th>
+                          <th>Suggested On</th>
+                          <th>Symbol</th>
+                          <th className="text-end">CMP</th>
+                          <th className="text-end">Entry</th>
+                          <th className="text-end">Target</th>
+                          <th className="text-end">Stop Loss</th>
+                          <th className="text-end">R/R</th>
+                          <th className="text-end">P/L %</th>
+                          <th>Status</th>
+                          <th>Exit Date</th>
+                          <th className="text-end">Holding (d)</th>
+                          <th>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(r => (
+                          <tr key={r.id}>
+                            <td><Badge color="light" className="text-dark">{r.market || 'US'}</Badge></td>
+                            <td>{fmtDate(r.suggestedOn)}</td>
+                            <td className="fw-semibold">{r.symbol}</td>
+                            <td className="text-end">{fmt(r.cmp)}</td>
+                            <td className="text-end">{fmt(r.entryPrice)}</td>
+                            <td className="text-end">{fmt(r.target)}</td>
+                            <td className="text-end">{fmt(r.stopLoss)}</td>
+                            <td className="text-end">{fmt(r.rewardRiskRatio, 3)}</td>
+                            <td className="text-end">
+                              {r.profitLossPct != null ? (
+                                <span className={Number(r.profitLossPct) >= 0 ? 'text-success' : 'text-danger'}>
+                                  {Number(r.profitLossPct) >= 0
+                                    ? <FaArrowUp className="me-1" />
+                                    : <FaArrowDown className="me-1" />}
+                                  {fmt(r.profitLossPct)}%
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td>{statusBadge(r.status)}</td>
+                            <td>{fmtDate(r.exitDate)}</td>
+                            <td className="text-end">{r.holdingDays ?? '—'}</td>
+                            <td className="text-muted small" style={{ maxWidth: 280 }}>
+                              {r.remarks || '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Symbol</th>
+                          <th className="text-end">Recommended Entry</th>
+                          <th>Latest View</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(r => (
+                          <tr key={r.id}>
+                            <td className="fw-semibold">{r.symbol}</td>
+                            <td className="text-end">{fmt(r.recommendedEntry)}</td>
+                            <td className="text-muted" style={{ maxWidth: 480 }}>
+                              {r.latestView || '—'}
+                            </td>
+                            <td>{statusBadge(r.status)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {pagination.totalPages > 1 && (
+                  <div className="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+                    <div className="text-muted small">
+                      Showing page {pagination.pageNumber + 1} of {pagination.totalPages}
+                      &nbsp;·&nbsp;{pagination.totalElements} total
+                    </div>
+                    <nav>
+                      <ul className="pagination pagination-sm mb-0">
+                        <li className={`page-item ${pagination.pageNumber === 0 ? 'disabled' : ''}`}>
+                          <button className="page-link"
+                                  onClick={() => setPagination(p => ({ ...p, pageNumber: Math.max(0, p.pageNumber - 1) }))}>
+                            Previous
+                          </button>
+                        </li>
+                        <li className={`page-item ${pagination.pageNumber + 1 >= pagination.totalPages ? 'disabled' : ''}`}>
+                          <button className="page-link"
+                                  onClick={() => setPagination(p => ({ ...p, pageNumber: Math.min(p.totalPages - 1, p.pageNumber + 1) }))}>
+                            Next
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </Col>
+        </Row>
       </Container>
     </RoleGate>
   );

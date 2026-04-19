@@ -1,6 +1,5 @@
-// Admin Sidebar Configuration - Includes User Portal + Admin Features
-import { userSidebarConfig } from "./userSidebar";
-
+// Admin Sidebar Configuration - Admin-only features
+// Personal account settings are accessed via the header avatar dropdown.
 export const adminSidebarConfig = [
   // Admin Section Header
   {
@@ -56,12 +55,5 @@ export const adminSidebarConfig = [
       { name: "Commission Config", path: "/admin/commission-config" },
       { name: "Referral Reports", path: "/admin/referral-reports" }
     ]
-  },
-
-  // User Portal Section
-  {
-    type: "header",
-    name: "User Portal"
-  },
-  ...userSidebarConfig
+  }
 ];

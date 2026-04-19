@@ -1,186 +1,96 @@
-// Recommendation Service
+// Recommendation Service — talks to the xlsx-backed recommendation-service.
 import apiClient from './apiClient';
 import { API_ENDPOINTS, PAGINATION } from '../config/constants';
 
 class RecommendationService {
   /**
-   * Get all open recommendations (for users - read only)
-   * @param {object} params - Query parameters
-   * @returns {Promise} Open recommendations list
+   * Upload a Confiance_Stock_Recommendations.xlsx.
+   * Admin / Super Admin only.
+   * @param {File} file
+   * @returns {Promise<{recLogInserted:number, recLogUpdated:number, longTermInserted:number, longTermUpdated:number, errors:string[]}>}
    */
-  async getOpenRecommendations(params = {}) {
-    try {
-      const queryParams = {
-        page: params.page ?? PAGINATION.DEFAULT_PAGE,
-        size: params.size ?? PAGINATION.DEFAULT_SIZE,
-      };
+  async uploadXlsx(file) {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post(API_ENDPOINTS.RECOMMENDATIONS.UPLOAD, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // large files can take a while
+    });
+  }
 
-      const response = await apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.OPEN, {
-        params: queryParams,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
+  /** List available sheets (logical tabs the UI can show) */
+  async getSheets() {
+    return apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.SHEETS);
   }
 
   /**
-   * Get all recommendations (admin)
-   * @param {object} params - Query parameters
-   * @returns {Promise} Recommendations list
+   * Paged rec-log view with filters.
+   * @param {object} filters { status, from, to, remarks, search }
+   * @param {object} page    { page, size }
    */
-  async getAllRecommendations(params = {}) {
-    try {
-      const queryParams = {
-        page: params.page ?? PAGINATION.DEFAULT_PAGE,
-        size: params.size ?? PAGINATION.DEFAULT_SIZE,
-      };
-
-      const response = await apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.LIST, {
-        params: queryParams,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Get recommendation by ID
-   * @param {number} id - Recommendation ID
-   * @returns {Promise} Recommendation data
-   */
-  async getRecommendationById(id) {
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.GET_BY_ID(id));
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Filter recommendations
-   * @param {object} filters - Filter parameters (market, status)
-   * @param {object} params - Pagination parameters
-   * @returns {Promise} Filtered recommendations list
-   */
-  async filterRecommendations(filters = {}, params = {}) {
-    try {
-      const queryParams = {
-        ...filters,
-        page: params.page ?? PAGINATION.DEFAULT_PAGE,
-        size: params.size ?? PAGINATION.DEFAULT_SIZE,
-      };
-
-      const response = await apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.FILTER, {
-        params: queryParams,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Get recommendations by market
-   * @param {string} market - Market code (US, INDIA, etc.)
-   * @param {object} params - Pagination parameters
-   * @returns {Promise} Recommendations list
-   */
-  async getRecommendationsByMarket(market, params = {}) {
-    try {
-      const queryParams = {
-        page: params.page ?? PAGINATION.DEFAULT_PAGE,
-        size: params.size ?? PAGINATION.DEFAULT_SIZE,
-      };
-
-      const response = await apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.BY_MARKET(market), {
-        params: queryParams,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Create new recommendation (admin only)
-   * @param {object} recommendationData - Recommendation data
-   * @returns {Promise} Create response
-   */
-  async createRecommendation(recommendationData) {
-    try {
-      const response = await apiClient.post(
-        API_ENDPOINTS.RECOMMENDATIONS.CREATE,
-        recommendationData
-      );
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Update recommendation (admin only)
-   * @param {number} id - Recommendation ID
-   * @param {object} updateData - Update data
-   * @returns {Promise} Update response
-   */
-  async updateRecommendation(id, updateData) {
-    try {
-      const response = await apiClient.put(
-        API_ENDPOINTS.RECOMMENDATIONS.UPDATE(id),
-        updateData
-      );
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Delete recommendation (admin only)
-   * @param {number} id - Recommendation ID
-   * @returns {Promise} Delete response
-   */
-  async deleteRecommendation(id) {
-    try {
-      const response = await apiClient.delete(API_ENDPOINTS.RECOMMENDATIONS.DELETE(id));
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Calculate potential return
-   * @param {number} entryPrice - Entry price
-   * @param {number} targetPrice - Target price
-   * @returns {object} Potential return and percentage
-   */
-  calculatePotentialReturn(entryPrice, targetPrice) {
-    const potentialReturn = targetPrice - entryPrice;
-    const potentialReturnPercentage = ((potentialReturn / entryPrice) * 100).toFixed(2);
-    return {
-      potentialReturn: potentialReturn.toFixed(2),
-      potentialReturnPercentage,
+  async getRecLog(filters = {}, page = {}) {
+    const params = {
+      ...stripEmpty(filters),
+      page: page.page ?? PAGINATION.DEFAULT_PAGE,
+      size: page.size ?? PAGINATION.DEFAULT_SIZE,
     };
+    return apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.REC_LOG, { params });
   }
 
   /**
-   * Calculate risk reward ratio
-   * @param {number} entryPrice - Entry price
-   * @param {number} targetPrice - Target price
-   * @param {number} stopLoss - Stop loss price
-   * @returns {string} Risk reward ratio
+   * Paged long-term view with filters.
+   * @param {object} filters { status, search }
+   * @param {object} page    { page, size }
    */
+  async getLongTerm(filters = {}, page = {}) {
+    const params = {
+      ...stripEmpty(filters),
+      page: page.page ?? PAGINATION.DEFAULT_PAGE,
+      size: page.size ?? PAGINATION.DEFAULT_SIZE,
+    };
+    return apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.LONG_TERM, { params });
+  }
+
+  /**
+   * Distinct symbols (union of rec_log + long_term). Used by Record Trade dropdown.
+   * Any authenticated user can read.
+   * @returns {Promise<string[]>}
+   */
+  async getSymbols() {
+    return apiClient.get(API_ENDPOINTS.RECOMMENDATIONS.SYMBOLS);
+  }
+
+  // ---- legacy surface kept so existing imports don't break at runtime ----
+  async filterRecommendations(filters = {}, params = {}) {
+    return this.getRecLog(filters, params);
+  }
+  async getAllRecommendations(params = {}) {
+    return this.getRecLog({}, params);
+  }
+  async getOpenRecommendations(params = {}) {
+    return this.getRecLog({ status: 'Open' }, params);
+  }
+
+  calculatePotentialReturn(entryPrice, targetPrice) {
+    const pr = Number(targetPrice) - Number(entryPrice);
+    const pct = ((pr / Number(entryPrice)) * 100).toFixed(2);
+    return { potentialReturn: pr.toFixed(2), potentialReturnPercentage: pct };
+  }
+
   calculateRiskRewardRatio(entryPrice, targetPrice, stopLoss) {
-    const reward = targetPrice - entryPrice;
-    const risk = entryPrice - stopLoss;
+    const reward = Number(targetPrice) - Number(entryPrice);
+    const risk = Number(entryPrice) - Number(stopLoss);
     if (risk <= 0) return '0.00';
     return (reward / risk).toFixed(2);
   }
+}
+
+function stripEmpty(obj) {
+  const out = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') out[k] = v;
+  });
+  return out;
 }
 
 export const recommendationService = new RecommendationService();

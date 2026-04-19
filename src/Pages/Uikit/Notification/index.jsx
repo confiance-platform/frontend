@@ -120,7 +120,7 @@ const Notifications = () => {
                                              aria-live="assertive" aria-atomic="true">
                                             <div
                                                 className="toast-header border-primary border-opacity-25 bg-light-primary">
-                                                <img src="../assets/images/logo/3.png"
+                                                <img src="/logo.png"
                                                      className="rounded me-2 h-30 w-30 b-r-4 " alt=""/>
                                                 <strong className="me-auto">Admin</strong>
                                                 <div className="bg-primary pt-1 ms-2 b-r-8">
@@ -197,7 +197,7 @@ const Notifications = () => {
         <h6 class="mb-3">Default Toast</h6>
         <div class="toast d-block border-primary border-opacity-25 bg-light-primary" role="alert" aria-live="assertive" aria-atomic="true">
           <div class="toast-header border-primary border-opacity-25 bg-light-primary">
-            <img src="/assets/images/logo/03.png" class="rounded me-2 h-30 w-30 b-r-4 " alt="">
+            <img src="/logo.png" class="rounded me-2 h-30 w-30 b-r-4 " alt="">
             <strong class="me-auto">Ra-admin</strong>
             <small>11 mins ago</small>
             <div class="bg-primary pt-1 ms-2 b-r-8">

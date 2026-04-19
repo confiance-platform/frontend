@@ -289,16 +289,22 @@ export const API_ENDPOINTS = {
     DELETE: (publicId) => `/files/${encodeURIComponent(publicId)}`,
     GET_BY_USER: (userId) => `/files/user/${userId}`,
   },
-  // Recommendations
+  // Recommendations (xlsx-backed — recommendation-service)
   RECOMMENDATIONS: {
-    LIST: '/recommendations',
-    OPEN: '/recommendations/open',
-    GET_BY_ID: (id) => `/recommendations/${id}`,
-    CREATE: '/recommendations',
-    UPDATE: (id) => `/recommendations/${id}`,
-    DELETE: (id) => `/recommendations/${id}`,
-    FILTER: '/recommendations/filter',
-    BY_MARKET: (market) => `/recommendations/market/${market}`,
+    UPLOAD: '/recommendations/upload',
+    SHEETS: '/recommendations/sheets',
+    REC_LOG: '/recommendations/rec-log',
+    LONG_TERM: '/recommendations/long-term',
+    SYMBOLS: '/recommendations/symbols',
+    // legacy (no longer wired — kept to avoid import errors elsewhere)
+    LIST: '/recommendations/rec-log',
+    OPEN: '/recommendations/rec-log',
+    GET_BY_ID: (id) => `/recommendations/rec-log/${id}`,
+    CREATE: '/recommendations/upload',
+    UPDATE: (id) => `/recommendations/rec-log/${id}`,
+    DELETE: (id) => `/recommendations/rec-log/${id}`,
+    FILTER: '/recommendations/rec-log',
+    BY_MARKET: (market) => `/recommendations/rec-log?market=${market}`,
   },
   // Trades
   TRADES: {

@@ -38,7 +38,7 @@ const Scrollpy = () => {
                                  className="navbar navbar-expand-lg scrollpy-navbar bg-body-tertiary">
                                 <div className="container-fluid">
                                     <a className="navbar-brand" href="#">
-                                        <img src="../assets/images/logo/1.png" className="w-150" alt="#"/>
+                                        <img src="/logo.png" className="w-150" alt="#"/>
                                     </a>
                                     <button className="navbar-toggler" type="button" data-bs-toggle="collapse"
                                             data-bs-target="#navbarSupportedContent"

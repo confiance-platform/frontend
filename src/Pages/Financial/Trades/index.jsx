@@ -33,13 +33,19 @@ const Trades = () => {
   const [buyForm, setBuyForm] = useState({
     market: 'INDIA',
     symbol: '',
-    companyName: '',
     currency: 'INR',
     buyDate: new Date().toISOString().split('T')[0],
     buyPrice: '',
     buyQuantity: '',
     notes: ''
   });
+
+  // Symbol dropdown — populated from recommendation-service. Any authenticated
+  // user can call /recommendations/symbols. The input is a typeahead backed by
+  // this list; the user can also free-type if the symbol isn't listed yet.
+  const [symbols, setSymbols] = useState([]);
+  const [symbolQuery, setSymbolQuery] = useState('');
+  const [symbolDropdownOpen, setSymbolDropdownOpen] = useState(false);
 
   // Sell Modal
   const [showSellModal, setShowSellModal] = useState(false);
@@ -50,6 +56,19 @@ const Trades = () => {
     sellQuantity: '',
     notes: ''
   });
+
+  // Load the recommendation symbols once (cheap, a few dozen entries)
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await recommendationService.getSymbols();
+        if (Array.isArray(list)) setSymbols(list);
+      } catch (err) {
+        // Non-fatal — user can still free-type symbols
+        console.warn('Failed to load recommendation symbols', err?.message);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (user?.id) {
@@ -120,13 +139,13 @@ const Trades = () => {
         setBuyForm({
           market: 'INDIA',
           symbol: '',
-          companyName: '',
           currency: 'INR',
           buyDate: new Date().toISOString().split('T')[0],
           buyPrice: '',
           buyQuantity: '',
           notes: ''
         });
+        setSymbolQuery('');
         fetchTrades();
         fetchSummary();
       }
@@ -549,23 +568,57 @@ const Trades = () => {
             </Col>
             <Col md={6}>
               <label className="form-label">Symbol *</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g., RELIANCE, AAPL"
-                value={buyForm.symbol}
-                onChange={(e) => setBuyForm(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-              />
-            </Col>
-            <Col md={12}>
-              <label className="form-label">Company Name</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g., Reliance Industries Ltd"
-                value={buyForm.companyName}
-                onChange={(e) => setBuyForm(prev => ({ ...prev, companyName: e.target.value }))}
-              />
+              <div className="position-relative">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Start typing — e.g. PLTR, NVDA"
+                  value={symbolQuery || buyForm.symbol}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    setSymbolQuery(v);
+                    setBuyForm(prev => ({ ...prev, symbol: v }));
+                    setSymbolDropdownOpen(true);
+                  }}
+                  onFocus={() => setSymbolDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setSymbolDropdownOpen(false), 150)}
+                  autoComplete="off"
+                />
+                {symbolDropdownOpen && symbols.length > 0 && (
+                  <div
+                    className="position-absolute bg-white border rounded shadow-sm w-100"
+                    style={{ zIndex: 1055, maxHeight: 220, overflowY: 'auto', top: '100%' }}
+                  >
+                    {symbols
+                      .filter(s => !symbolQuery || s.toUpperCase().includes(symbolQuery.toUpperCase()))
+                      .slice(0, 50)
+                      .map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          className="dropdown-item w-100 text-start px-3 py-2"
+                          onMouseDown={(e) => { e.preventDefault(); }}
+                          onClick={() => {
+                            setBuyForm(prev => ({ ...prev, symbol: s }));
+                            setSymbolQuery(s);
+                            setSymbolDropdownOpen(false);
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))
+                    }
+                    {symbols.filter(s => !symbolQuery || s.toUpperCase().includes(symbolQuery.toUpperCase())).length === 0 && (
+                      <div className="px-3 py-2 text-muted small">
+                        No recommendation symbol matches — you can still type any symbol.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="form-text">
+                Type to search recommendations, or enter any symbol manually.
+              </div>
             </Col>
             <Col md={4}>
               <label className="form-label">Buy Date *</label>

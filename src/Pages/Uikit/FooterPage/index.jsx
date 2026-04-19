@@ -478,7 +478,7 @@ const FooterPage = () => {
                                             <div className="col-md-3 col-lg-4 col-xl-3 mx-auto">
                                                 <div className="footer-first">
                                                     <div className="footer-title">
-                                                        <img src="../assets/images/logo/1.png" className="w-140"
+                                                        <img src="/logo.png" className="w-140"
                                                              alt=""/>
                                                     </div>
                                                     <div className="mt-3">
@@ -605,7 +605,7 @@ const FooterPage = () => {
       <div class="col-md-3 col-lg-4 col-xl-3 mx-auto mb-4">
         <div class="footer-first">
           <div class="footer-title">
-            <img src="../assets/images/logo/1.png" class="w-140" alt="">
+            <img src="/logo.png" class="w-140" alt="">
           </div>
           <div class="mt-3">
             <p>Here you can use rows and columns to organize your footer content. Lorem ipsum dolor sit amet, consectetur adipisicing elit.</p>

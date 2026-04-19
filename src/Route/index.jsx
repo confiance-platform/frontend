@@ -62,6 +62,7 @@ const Crypto = React.lazy(() => import("@/Pages/Dashboard/Crypto"));
 const Profile = React.lazy(() => import("@/Pages/Apps/ProfilePage/Profile"));
 const Settings = React.lazy(() => import("@/Pages/Apps/ProfilePage/Settings"));
 const Invoice = React.lazy(() => import("@/Pages/Apps/Invoice"));
+const NotificationsPage = React.lazy(() => import("@/Pages/Apps/Notifications"));
 
 
 // Authentication Pages
@@ -172,6 +173,7 @@ const Routes = () => {
         { path: AppsRoutes.PROFILE_PAGE, element: <Profile /> },
         { path: AppsRoutes.SETTING_PAGE, element: <Settings /> },
         { path: AppsRoutes.INVOICE_PAGE, element: <Invoice /> },
+        { path: "notifications", element: <NotificationsPage /> },
 
         // Admin - User Insights Routes
         { path: "admin/user-insights", element: <UserInsightsDashboard /> },

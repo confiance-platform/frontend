@@ -151,7 +151,7 @@ const PasswordReset = () => {
                   <div className="signup-content mt-4">
                     <span>
                       <img
-                        src="../assets/images/logo/1.png"
+                        src="/logo.png"
                         alt="Confiance"
                         className="img-fluid"
                       />

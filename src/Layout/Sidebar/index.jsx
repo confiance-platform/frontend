@@ -28,10 +28,8 @@ const Sidebar = ({sidebarOpen, setIsSidebarOpen}) => {
     return (
         <nav className={`vertical-sidebar ${sidebarOpen ? "semi-nav" : ""}`}>
             <div className="app-logo" style={{ padding: '1rem 1.5rem', minHeight: '60px' }}>
-                <Link className="logo d-inline-block" to={getDashboardLink()} style={{ textDecoration: 'none' }}>
-                    <h4 className="text-primary mb-0 fw-bold" style={{ fontSize: '1.5rem', letterSpacing: '0.5px' }}>
-                        Confiance
-                    </h4>
+                <Link className="logo d-inline-flex align-items-center" to={getDashboardLink()} style={{ textDecoration: 'none' }}>
+                    <img src="/logo.png" alt="Confiance" style={{ height: '40px', width: 'auto' }} />
                 </Link>
                 <span
                     className="bg-light-light toggle-semi-nav"

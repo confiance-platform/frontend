@@ -32,7 +32,7 @@ const Faq = () => {
                 </Col>
             </Row>
             <div className="faq-header text-center my-4">
-                <img src="/assets/images/logo/3.png" alt="Logo"/>
+                <img src="/logo.png" alt="Logo"/>
                 <h2 className="text-dark fw-bold">How Can We Help?</h2>
                 <div className="app-form search-div mt-3">
                     <InputGroup className="b-r-search">

@@ -39,7 +39,7 @@ const InvoicePage = () => {
                                                         <td>
                                                             <div className=" mb-3">
                                                                 <div className="mb-3">
-                                                                    <img src="/assets/images/logo/1.png"
+                                                                    <img src="/logo.png"
                                                                          className="w-200" alt=""/>
                                                                 </div>
                                                                 <div>

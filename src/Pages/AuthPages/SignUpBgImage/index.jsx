@@ -12,7 +12,7 @@ const SignUpBgImage = () => {
                         <div className="login-form-container">
                             <div className="mb-4">
                                 <Link className="logo d-inline-block" to="/dashboard/ecommerce">
-                                    <img src="../assets/images/logo/1.png" width="250" alt="#"/>
+                                    <img src="/logo.png" width="250" alt="#"/>
                                 </Link>
                             </div>
                             <div className="form_container">

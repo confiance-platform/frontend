@@ -1,27 +1,21 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
 import {
-    weatherData,
-    initialCartItems,
-    initialnotifications,
-    linkData,
-    headerLanguages,
-    searchData
+    headerLanguages
 } from "../../Data/HeaderMenuData.js";
 import {Link, useNavigate} from 'react-router-dom'
 import {Card, CardBody} from "reactstrap";
 import HeaderMode from "../../Layout/Header/HeaderMode.jsx";
 import {useAuth} from "../../context/AuthContext";
 import {toast} from "react-toastify";
+import {notificationService, recommendationService} from "../../Services";
+import {resolveImageUrl} from "../../utils/imageUrl";
+import {userSidebarConfig} from "../../Data/Sidebar/userSidebar";
+import {adminSidebarConfig} from "../../Data/Sidebar/adminSidebar";
+import {superAdminSidebarConfig} from "../../Data/Sidebar/superAdminSidebar";
 
 const HeaderMenu = () => {
-    const { logout, user } = useAuth();
+    const { logout, user, isAdmin, isSuperAdmin } = useAuth();
     const navigate = useNavigate();
-    const [cartItems, setCartItems] = useState(initialCartItems);
-
-    const handleRemoveItem = (id) => {
-        const updatedCartItems = cartItems.filter(item => item.id !== id);
-        setCartItems(updatedCartItems);
-    };
 
     const handleLogout = async () => {
         try {
@@ -34,11 +28,124 @@ const HeaderMenu = () => {
         }
     };
 
-    const [notificationsItems, setNotificationsItems] = useState(initialnotifications);
+    // -------- Weather (Open-Meteo, no API key) --------
+    const [weather, setWeather] = useState(null); // { temp, unit, code, location }
 
-    const handleRemoveItem1 = (id) => {
-        const updatedNotificationsItems = notificationsItems.filter(item => item.id !== id);
-        setNotificationsItems(updatedNotificationsItems);
+    useEffect(() => {
+        let cancelled = false;
+        const codeToIcon = (c) => {
+            if (c === 0) return 'ph-sun';
+            if (c === 1 || c === 2) return 'ph-cloud-sun';
+            if (c === 3) return 'ph-cloud';
+            if (c >= 45 && c <= 48) return 'ph-cloud-fog';
+            if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return 'ph-cloud-rain';
+            if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'ph-snowflake';
+            if (c >= 95) return 'ph-cloud-lightning';
+            return 'ph-cloud-sun';
+        };
+        const fetchWeather = async (lat, lon, location = 'Your location') => {
+            try {
+                const res = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=celsius`
+                );
+                const data = await res.json();
+                if (cancelled) return;
+                const c = data?.current;
+                if (c && typeof c.temperature_2m === 'number') {
+                    setWeather({
+                        temp: Math.round(c.temperature_2m),
+                        unit: '°C',
+                        code: c.weather_code,
+                        icon: codeToIcon(c.weather_code),
+                        location,
+                    });
+                }
+            } catch (err) {
+                console.warn('Weather fetch failed', err?.message);
+            }
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Your location'),
+                () => fetchWeather(19.0760, 72.8777, 'Mumbai'), // denied / unavailable → default
+                { timeout: 4000, maximumAge: 600000 }
+            );
+        } else {
+            fetchWeather(19.0760, 72.8777, 'Mumbai');
+        }
+        return () => { cancelled = true; };
+    }, []);
+
+    // -------- Notifications (real API) --------
+    const [notificationsItems, setNotificationsItems] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const loadNotifications = useCallback(async () => {
+        if (!user?.id) return;
+        try {
+            const [list, count] = await Promise.all([
+                notificationService.getUserNotifications(user.id, { page: 0, size: 10 })
+                    .catch(() => null),
+                notificationService.getUnreadCount(user.id).catch(() => null),
+            ]);
+            const content = list?.data?.content || list?.content || [];
+            setNotificationsItems(Array.isArray(content) ? content : []);
+            const n = count?.data?.count ?? count?.count ?? count?.data ?? count ?? 0;
+            setUnreadCount(typeof n === 'number' ? n : 0);
+        } catch (err) {
+            // silently swallow — notifications are non-critical
+        }
+    }, [user?.id]);
+
+    useEffect(() => {
+        loadNotifications();
+        const id = setInterval(loadNotifications, 45000);
+        return () => clearInterval(id);
+    }, [loadNotifications]);
+
+    const handleRemoveItem1 = async (id) => {
+        setNotificationsItems(prev => prev.filter(item => item.id !== id));
+        try { await notificationService.deleteNotification(id, user?.id); } catch {}
+    };
+
+    const notifDismissRef = useRef(null);
+
+    const handleNotifClick = async (n) => {
+        if (!(n.isRead || n.read)) {
+            // Optimistic local update, then fire-and-forget the API call.
+            setNotificationsItems(prev => prev.map(x =>
+                x.id === n.id ? { ...x, isRead: true, read: true } : x));
+            setUnreadCount(c => Math.max(0, c - 1));
+            try { await notificationService.markAsRead(n.id, user?.id); } catch {}
+        }
+        if (n.actionUrl) {
+            notifDismissRef.current?.click();
+            navigate(n.actionUrl);
+        }
+    };
+
+    const markAllRead = async () => {
+        if (!user?.id) return;
+        try {
+            await notificationService.markAllAsRead(user.id);
+            setUnreadCount(0);
+            setNotificationsItems(prev => prev.map(n => ({ ...n, read: true })));
+        } catch (err) {
+            toast.error(err?.message || 'Failed to mark all read');
+        }
+    };
+
+    const formatNotifDate = (iso) => {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            const diff = (Date.now() - d.getTime()) / 1000;
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return d.toLocaleDateString();
+        } catch { return ''; }
     };
 
     const [currentIcon1, setCurrentIcon1] = useState('usa');
@@ -49,16 +156,119 @@ const HeaderMenu = () => {
         setCurrentIcon1(icon);
     };
 
+    // -------- Global search (role-aware pages + stock symbols) --------
     const [searchTerm, setSearchTerm] = useState("");
+    const [searchSymbols, setSearchSymbols] = useState([]);
+    const searchDismissRef = useRef(null);
 
-    const filterItems = searchData.filter((item) =>
-        item.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Build a flat list of navigable pages from the sidebar config that
+    // matches the current user's role. Each entry can be filtered by title
+    // + keyword, and clicking jumps to the path.
+    const pageIndex = useMemo(() => {
+        const cfg = isSuperAdmin?.() ? superAdminSidebarConfig
+                  : isAdmin?.()      ? adminSidebarConfig
+                  : userSidebarConfig;
+        const out = [];
+        const walk = (items, parentName) => {
+            for (const it of items || []) {
+                if (it.type === 'single' && it.path) {
+                    out.push({
+                        id: it.path,
+                        title: it.name,
+                        path: it.path,
+                        kind: 'Page',
+                        iconClass: it.iconClass || 'ph-file-text',
+                        bgColor: 'bg-light-primary',
+                        keywords: [parentName, it.name].filter(Boolean).join(' ').toLowerCase()
+                    });
+                } else if (it.type === 'dropdown' && Array.isArray(it.children)) {
+                    for (const c of it.children) {
+                        if (!c.path) continue;
+                        out.push({
+                            id: c.path,
+                            title: c.name,
+                            subtitle: it.name,
+                            path: c.path,
+                            kind: 'Page',
+                            iconClass: it.iconClass || 'ph-file-text',
+                            bgColor: 'bg-light-primary',
+                            keywords: `${it.name} ${c.name}`.toLowerCase()
+                        });
+                    }
+                }
+            }
+        };
+        walk(cfg);
+        // A couple of top-level shortcuts always useful.
+        out.push({
+            id: '/apps/profile-page/profile', title: 'Profile Details',
+            path: '/apps/profile-page/profile', kind: 'Page',
+            iconClass: 'ph-user-circle', bgColor: 'bg-light-info',
+            keywords: 'profile avatar account'
+        });
+        out.push({
+            id: '/apps/profile-page/setting', title: 'Settings',
+            path: '/apps/profile-page/setting', kind: 'Page',
+            iconClass: 'ph-gear', bgColor: 'bg-light-secondary',
+            keywords: 'settings password notifications'
+        });
+        return out;
+    }, [isAdmin, isSuperAdmin]);
+
+    // Load the recommendation symbols once so the search can jump to a
+    // symbol's context (Trades / Record Buy for now — we route to
+    // `/financial/trades?symbol=XYZ`).
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const list = await recommendationService.getSymbols();
+                if (!cancelled && Array.isArray(list)) setSearchSymbols(list);
+            } catch { /* non-critical */ }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const filterItems = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) {
+            // No query — show the first handful of pages so the panel isn't empty.
+            return pageIndex.slice(0, 10);
+        }
+        const pages = pageIndex
+            .filter(p =>
+                p.title.toLowerCase().includes(q) ||
+                (p.keywords && p.keywords.includes(q)))
+            .slice(0, 12);
+        const symHits = searchSymbols
+            .filter(s => s.toLowerCase().includes(q))
+            .slice(0, 10)
+            .map(s => ({
+                id: `symbol:${s}`,
+                title: s,
+                subtitle: 'Stock symbol',
+                path: `/financial/trades?symbol=${encodeURIComponent(s)}`,
+                kind: 'Symbol',
+                iconClass: 'ph-chart-line-up',
+                bgColor: 'bg-light-success',
+                keywords: s.toLowerCase()
+            }));
+        return [...pages, ...symHits];
+    }, [searchTerm, pageIndex, searchSymbols]);
+
+    const handleSearchPick = (item) => {
+        if (!item?.path) return;
+        setSearchTerm("");
+        // Close the Bootstrap offcanvas programmatically by clicking its hidden dismiss button.
+        searchDismissRef.current?.click();
+        navigate(item.path);
+    };
 
     const highlightText = (text, highlight) => {
         if (!highlight) return text;
-        const regex = new RegExp(`(${highlight})`, "gi");
-        return text.replace(regex, `<span class="highlight-searchtext">$1</span>`);
+        const safe = String(highlight).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${safe})`, "gi");
+        return String(text).replace(regex, `<span class="highlight-searchtext">$1</span>`);
     };
 
 
@@ -66,32 +276,14 @@ const HeaderMenu = () => {
         <>
             <ul className="d-flex align-items-center">
                 <li className="header-cloud">
-                    <a href="#" className="head-icon" role="button" data-bs-toggle="offcanvas"
-                       data-bs-target="#cloudoffcanvasTops" aria-controls="cloudoffcanvasTops">
-                        <i className="ph-duotone  ph-cloud-sun text-primary f-s-26 me-1"></i>
-                        <span>26 <sup className="f-s-10">°C</sup></span>
+                    <a href="#" className="head-icon" role="button"
+                       title={weather?.location || 'Weather'}>
+                        <i className={`ph-duotone ${weather?.icon || 'ph-cloud-sun'} text-primary f-s-26 me-1`}></i>
+                        <span>
+                            {weather ? weather.temp : '—'}
+                            {' '}<sup className="f-s-10">{weather?.unit || '°C'}</sup>
+                        </span>
                     </a>
-                    <div className="offcanvas offcanvas-end header-cloud-canvas" tabIndex="-1"
-                         id="cloudoffcanvasTops" aria-labelledby="cloudoffcanvasTops">
-                        <div className="offcanvas-body p-0">
-                            <div className="cloud-body">
-                                <div className="cloud-content-box">
-                                    {weatherData.map((data, index) => (
-                                        <div className={`cloud-box ${data.bgClass}`} key={index}>
-                                            <p className="mb-3">{data.day}</p>
-                                            <h6 className="mt-4 f-s-13">{data.temperature}</h6>
-                                            <span>
-                                              <i className={`ph-duotone ${data.icon} text-white f-s-25`}></i>
-                                            </span>
-                                            <p className="f-s-13 mt-3">
-                                                <i className="wi wi-raindrop"></i> {data.rain}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </li>
 
                 <li className="header-language">
@@ -134,15 +326,29 @@ const HeaderMenu = () => {
 
                     <div className="offcanvas offcanvas-end header-searchbar-canvas" tabIndex="-1"
                          id="offcanvasRight" aria-labelledby="offcanvasRight">
+                        {/* Hidden dismiss target — clicking it closes the offcanvas without
+                            needing to wrap every list item with data-bs-dismiss. */}
+                        <button
+                            ref={searchDismissRef}
+                            type="button"
+                            data-bs-dismiss="offcanvas"
+                            style={{ display: 'none' }}
+                            aria-hidden="true"
+                        />
                         <div className="header-searchbar-header">
                             <div className="d-flex justify-content-between mb-3">
-                                <form className="app-form app-icon-form w-100" action="#">
+                                <form className="app-form app-icon-form w-100" action="#"
+                                      onSubmit={(e) => {
+                                          e.preventDefault();
+                                          if (filterItems.length > 0) handleSearchPick(filterItems[0]);
+                                      }}>
                                     <div className="position-relative">
                                         <input
                                             type="search"
                                             className="form-control search-filter"
-                                            placeholder="Search..."
+                                            placeholder="Search pages and symbols…"
                                             aria-label="Search"
+                                            autoFocus
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                         />
@@ -215,215 +421,45 @@ const HeaderMenu = () => {
                                     </ul>
                                 </div>
                             </div>
-                            <p className="mb-0 text-secondary f-s-15 mt-2">Recently Searched Data:</p>
+                            <p className="mb-0 text-secondary f-s-15 mt-2">
+                                {searchTerm
+                                    ? `${filterItems.length} result${filterItems.length === 1 ? '' : 's'}`
+                                    : 'Jump to a page or search a stock symbol'}
+                            </p>
                         </div>
                         <div className="offcanvas-body app-scroll p-0">
-                            <ul className="search-list">
-                                {filterItems.map((item, index) => (
-                                    <li className="search-list-item" key={index}>
-                                        <div
-                                            className={`h-35 w-35 d-flex-center b-r-15 overflow-hidden ${item.bgColor} search-list-avtar`}>
-                                            <i className={`ph-duotone ${item.icon} f-s-20`}></i>
-                                        </div>
-                                        <div className="search-list-content">
-                                            <h6
-                                                className="mb-0 text-dark"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: highlightText(item.title, searchTerm),
-                                                }}
-                                            ></h6>
-                                            <p className="f-s-13 mb-0 text-secondary">{item.id}</p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </li>
-
-                <li className="header-apps">
-                    <a href="#" className="d-block head-icon" role="button" data-bs-toggle="offcanvas"
-                       data-bs-target="#appscanvasRights" aria-controls="appscanvasRights">
-                        <i className="ph ph-bounding-box"></i>
-
-                    </a>
-
-                    <div className="offcanvas offcanvas-end header-apps-canvas" tabIndex="-1"
-                         id="appscanvasRights" aria-labelledby="appscanvasRightsLabel">
-                        <div className="offcanvas-header">
-                            <h5 className="offcanvas-title" id="appscanvasRightsLabel">Shortcut</h5>
-                            <div className="app-dropdown flex-shrink-0">
-                                <a className=" p-1" href="#" role="button" data-bs-toggle="dropdown"
-                                   data-bs-auto-close="outside" aria-expanded="false">
-                                    <i className="ph-bold  ph-faders-horizontal f-s-20"></i>
-                                </a>
-                                <ul className="dropdown-menu mb-3 p-2">
-                                    <li className="dropdown-item">
-                                        <a href="#">
-                                            Privacy Settings
-                                        </a>
-                                    </li>
-                                    <li className="dropdown-item">
-                                        <a href="#">
-                                            Account Settings
-                                        </a>
-                                    </li>
-                                    <li className="dropdown-item">
-                                        <a href="#">
-                                            Accessibility
-                                        </a>
-                                    </li>
-                                    <li className="dropdown-divider"></li>
-                                    <li className="dropdown-item border-0">
-                                        <a href="#" role="button" data-bs-toggle="dropdown"
-                                           aria-expanded="false">
-                                            More Settings
-                                        </a>
-                                        <ul className="dropdown-menu sub-menu">
-                                            <li className="dropdown-item">
-                                                <a href="#">
-                                                    Backup and Restore
-                                                </a>
-                                            </li>
-                                            <li className="dropdown-item">
-                                                <a href="#">
-                                                    <span>Data Usage</span>
-                                                </a>
-                                            </li>
-                                            <li className="dropdown-item">
-                                                <a href="#">
-                                                    <span>Theme</span>
-                                                </a>
-                                            </li>
-                                            <li
-                                                className="dropdown-item d-flex align-items-center justify-content-between">
-                                                <a href="#">
-                                                    <p className="mb-0">Notification</p>
-                                                </a>
-                                                <div className="flex-shrink-0">
-                                                    <div className="form-check form-switch">
-                                                        <input
-                                                            className="form-check-input  form-check-primary"
-                                                            type="checkbox" id="notificationSwitch"/>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        </ul>
-                                    </li>
-
+                            {filterItems.length === 0 ? (
+                                <div className="text-center text-muted py-5 px-3">
+                                    <i className="ph-duotone ph-magnifying-glass" style={{ fontSize: 40 }}></i>
+                                    <div className="mt-2">No matches for “{searchTerm}”.</div>
+                                </div>
+                            ) : (
+                                <ul className="search-list">
+                                    {filterItems.map((item) => (
+                                        <li className="search-list-item" key={item.id}
+                                            onClick={() => handleSearchPick(item)}
+                                            role="button"
+                                            style={{ cursor: 'pointer' }}>
+                                            <div className={`h-35 w-35 d-flex-center b-r-15 overflow-hidden ${item.bgColor} search-list-avtar`}>
+                                                <i className={`ph-duotone ${item.iconClass} f-s-20`}></i>
+                                            </div>
+                                            <div className="search-list-content">
+                                                <h6
+                                                    className="mb-0 text-dark"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: highlightText(item.title, searchTerm),
+                                                    }}
+                                                ></h6>
+                                                <p className="f-s-13 mb-0 text-secondary">
+                                                    {item.subtitle || item.kind}
+                                                    {item.kind === 'Page' && item.path
+                                                        ? ` · ${item.path}` : ''}
+                                                </p>
+                                            </div>
+                                        </li>
+                                    ))}
                                 </ul>
-                            </div>
-                        </div>
-                        <div className="offcanvas-body app-scroll">
-                            <div className="row row-cols-3">
-                                {linkData.map((link, index) => (
-                                    <div key={index} className="d-flex-center text-center mb-3">
-                                        <Link href={link.href}>
-                                            <span>
-                                                <i className={`ph-duotone ${link.icon} ${link.color} f-s-30`}></i>
-                                            </span>
-                                            <p className="mb-0 f-w-500 text-secondary">{link.text}</p>
-                                        </Link>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </li>
-
-                <li className="header-cart">
-                    <a href="#" className="d-block head-icon position-relative" role="button"
-                       data-bs-toggle="offcanvas" data-bs-target="#cartcanvasRight"
-                       aria-controls="cartcanvasRight">
-                        <i className="ph ph-shopping-cart-simple"></i>
-                        <span
-                            className="position-absolute translate-middle badge rounded-pill bg-danger badge-notification">4</span>
-                    </a>
-                    <div className="offcanvas offcanvas-end header-cart-canvas" tabIndex="-1"
-                         id="cartcanvasRight" aria-labelledby="cartcanvasRightLabel">
-                        <div className="offcanvas-header">
-                            <h5 className="offcanvas-title" id="cartcanvasRightLabel">Cart</h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="offcanvas"
-                                    aria-label="Close"></button>
-                        </div>
-                        <div className="offcanvas-body app-scroll p-0">
-                            <div className="head-container">
-                                {cartItems.length > 0 ? (
-                                    cartItems.map((item) => (
-                                        <div className="head-box" key={item.id}>
-                                            <img
-                                                src={item.imageSrc}
-                                                alt={item.name}
-                                                className="h-50 me-3 b-r-10"
-                                                width={50}
-                                                height={50}
-                                            />
-                                            <div className="flex-grow-1">
-                                                <Link className="mb-0 f-w-600 f-s-16" href="/apps/e-shop/product-details">
-                                                    {item.name}
-                                                </Link>
-                                                <div>
-                                                    {Array.from({length: 5}, (_, i) => (
-                                                        <i
-                                                            key={i}
-                                                            className={`ti ti-star-filled f-s-12 ${i < item.stars ? 'text-warning' : ''}`}
-                                                        ></i>
-                                                    ))}
-                                                </div>
-                                                <span className="text-secondary">
-                                                  <span className="text-dark f-w-400">size</span>: {item.size}
-                                                </span>
-                                                <span className="text-secondary ms-2">
-                                                    <span className="text-dark f-w-400">Color</span>: {item.color}
-                                                </span>
-                                            </div>
-                                            <div className="text-end">
-                                                <i
-                                                    className="ph ph-trash f-s-18 text-danger close-btn"
-                                                    onClick={() => handleRemoveItem(item.id)}
-                                                ></i>
-                                                <p className="text-muted f-w-500 mb-0">{item.price}</p>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="hidden-massage py-4 px-3">
-                                        <img
-                                            src="/assets/images/icons/cart.png"
-                                            alt="cart"
-                                            className="w-50 h-50 mb-3"
-                                            width={50}
-                                            height={50}
-                                        />
-                                        <div>
-                                            <h6 className="mb-0">Your Cart is Empty</h6>
-                                            <p className="text-secondary mb-0">Add some items :)</p>
-                                            <Link className="btn btn-light-primary btn-xs mt-2"
-                                                  href="/apps/e-shop/product-details">
-                                                Shop Now
-                                            </Link>
-                                        </div>
-                                    </div>
-                                )}
-
-                            </div>
-                        </div>
-                        <div className="offcanvas-footer">
-                            <div className="head-box-footer p-3">
-                                <div className="mb-4">
-                                    <h6 className="text-muted f-w-600">Total <span
-                                        className="float-end">$3,468.00
-                            </span></h6>
-                                </div>
-                                <div className="header-cart-btn">
-                                    <Link href="/apps/e-shop/cart" role="button"
-                                          className="btn btn-light-primary">
-                                        <i className="ti ti-eye"></i> View Cart</Link>
-                                    <Link href="/apps/e-shop/checkout" role="button"
-                                          className="btn btn-light-success">
-                                        Checkout <i className="ti ti-shopping-cart"></i></Link>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </li>
@@ -437,58 +473,77 @@ const HeaderMenu = () => {
                        data-bs-toggle="offcanvas" data-bs-target="#notificationcanvasRight"
                        aria-controls="notificationcanvasRight">
                         <i className="ph ph-bell"></i>
-                        <span
-                            className="position-absolute translate-middle p-1 bg-success border border-light rounded-circle animate__animated animate__fadeIn animate__infinite animate__slower"></span>
+                        {unreadCount > 0 && (
+                            <span className="position-absolute translate-middle badge rounded-pill bg-danger badge-notification">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
                     </a>
                     <div className="offcanvas offcanvas-end header-notification-canvas" tabIndex="-1"
                          id="notificationcanvasRight" aria-labelledby="notificationcanvasRightLabel">
-                        <div className="offcanvas-header">
-                            <h5 className="offcanvas-title" id="notificationcanvasRightLabel">
-                                Notification</h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="offcanvas"
-                                    aria-label="Close"></button>
+                        <button ref={notifDismissRef} type="button"
+                                data-bs-dismiss="offcanvas" style={{ display: 'none' }} aria-hidden="true"/>
+                        <div className="offcanvas-header d-flex align-items-center justify-content-between">
+                            <h5 className="offcanvas-title mb-0" id="notificationcanvasRightLabel">
+                                Notifications{unreadCount > 0 && <span className="badge bg-primary ms-2">{unreadCount}</span>}
+                            </h5>
+                            <div className="d-flex align-items-center gap-2">
+                                {notificationsItems.length > 0 && unreadCount > 0 && (
+                                    <button type="button" className="btn btn-sm btn-link p-0 text-primary"
+                                            onClick={markAllRead}>
+                                        Mark all read
+                                    </button>
+                                )}
+                                <button type="button" className="btn-close" data-bs-dismiss="offcanvas"
+                                        aria-label="Close"></button>
+                            </div>
                         </div>
                         <div className="offcanvas-body app-scroll p-0">
                             <div className="head-container">
                                 {notificationsItems.length > 0 ? (
-                                    notificationsItems.map((notification) => (
-                                        <div key={notification.id} className="notification-message head-box">
+                                    notificationsItems.map((n) => (
+                                        <div key={n.id}
+                                             className={`notification-message head-box ${n.read || n.isRead ? '' : 'bg-light-primary'}`}
+                                             onClick={() => handleNotifClick(n)}
+                                             role="button"
+                                             style={{ cursor: 'pointer' }}>
                                             <div className="message-images">
                                                 <span className="bg-secondary h-35 w-35 d-flex-center b-r-10 position-relative">
-                                                  <img
-                                                      src={notification.imageSrc}
-                                                      alt={notification.title}
-                                                      className="img-fluid b-r-10"
-                                                  />
-                                                  <span
-                                                      className="position-absolute bottom-30 end-0 p-1 bg-secondary border border-light rounded-circle notification-avtar"></span>
+                                                    <i className="ph-duotone ph-bell text-white"></i>
                                                 </span>
                                             </div>
                                             <div className="message-content-box flex-grow-1 ps-2">
-                                                <Link href="/apps/email-page/read-email" className="f-s-15 text-secondary mb-0">
-                                                    <span className="f-w-500 text-secondary">{notification.title}</span>
-                                                    {notification.message}
-                                                </Link>
-                                                <span
-                                                    className="badge text-light-secondary mt-2">{notification.date}</span>
+                                                <div className="f-s-15 text-secondary mb-0">
+                                                    <span className="f-w-500 text-secondary d-block">{n.title || 'Notification'}</span>
+                                                    <span className="text-muted">{n.message || n.body || ''}</span>
+                                                </div>
+                                                <span className="badge text-light-secondary mt-2">
+                                                    {formatNotifDate(n.createdAt || n.created_at || n.date)}
+                                                </span>
                                             </div>
                                             <div className="align-self-start text-end">
-                                                <i className="ph ph-trash f-s-18 text-danger close-btn" onClick={() => handleRemoveItem1(notification.id)}></i>
+                                                <i className="ph ph-trash f-s-18 text-danger close-btn"
+                                                   onClick={(e) => { e.stopPropagation(); handleRemoveItem1(n.id); }}
+                                                   style={{ cursor: 'pointer' }}></i>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="hidden-massage py-4 px-3">
-                                        <img src="/assets/images/icons/bell.png" className="w-50 h-50 mb-3 mt-2"
-                                             alt="No notifications"/>
-                                        <div>
-                                            <h6 className="mb-0">Notification Not Found</h6>
-                                            <p className="text-secondary">
-                                                When you have any notifications added here, they will appear here.
-                                            </p>
+                                    <div className="hidden-massage py-4 px-3 text-center">
+                                        <i className="ph-duotone ph-bell-slash text-primary" style={{ fontSize: 48 }}></i>
+                                        <div className="mt-3">
+                                            <h6 className="mb-0">No notifications</h6>
+                                            <p className="text-secondary">You're all caught up.</p>
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                            <div className="p-3 border-top text-center">
+                                <Link to="/notifications"
+                                      className="btn btn-sm btn-link"
+                                      onClick={() => notifDismissRef.current?.click()}>
+                                    View all notifications
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -498,8 +553,16 @@ const HeaderMenu = () => {
                 <li className="header-profile">
                     <a href="#" className="d-block head-icon" role="button" data-bs-toggle="offcanvas"
                        data-bs-target="#profilecanvasRight" aria-controls="profilecanvasRight">
-                        <img src="/assets/images/avtar/woman.jpg" alt="avtar"
-                             className="b-r-10 h-35 w-35"/>
+                        {user?.profileImageUrl ? (
+                            <img src={resolveImageUrl(user.profileImageUrl)} alt="avatar"
+                                 className="b-r-10 h-35 w-35"
+                                 style={{ objectFit: 'cover' }}
+                                 onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'inline-flex'; }}/>
+                        ) : null}
+                        <span className="b-r-10 h-35 w-35 d-flex-center bg-primary-subtle text-primary"
+                              style={{ display: user?.profileImageUrl ? 'none' : 'inline-flex' }}>
+                            <i className="ph-duotone ph-user-circle f-s-22"></i>
+                        </span>
                     </a>
 
                     <div className="offcanvas offcanvas-end header-profile-canvas" tabIndex="-1"
@@ -508,10 +571,14 @@ const HeaderMenu = () => {
                             <ul className="">
                                 <li>
                                     <div className="d-flex-center">
-                            <span
-                                className="h-45 w-45 d-flex-center b-r-10 position-relative">
-                              <img src="/assets/images/avtar/woman.jpg" alt="woman"
-                                   className="img-fluid b-r-10"/>
+                            <span className="h-45 w-45 d-flex-center b-r-10 position-relative bg-primary-subtle text-primary">
+                                {user?.profileImageUrl ? (
+                                    <img src={resolveImageUrl(user.profileImageUrl)} alt="avatar"
+                                         className="img-fluid b-r-10 h-45 w-45"
+                                         style={{ objectFit: 'cover' }}/>
+                                ) : (
+                                    <i className="ph-duotone ph-user-circle f-s-28"></i>
+                                )}
                             </span>
                                     </div>
                                     <div className="text-center mt-2">
