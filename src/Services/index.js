@@ -4,6 +4,7 @@ export { authService } from './authService';
 export { userService } from './userService';
 export { investmentService } from './investmentService';
 export { adminService } from './adminService';
+export { adminUserService } from './adminUserService';
 export { portfolioService } from './portfolioService';
 export { transactionService } from './transactionService';
 export { notificationService } from './notificationService';

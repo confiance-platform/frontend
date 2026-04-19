@@ -38,18 +38,43 @@ class NotificationService {
   }
 
   /**
-   * Send template email
+   * Send template email.
+   * Backend expects: query params (to, subject, templateName, userId) + body = variables map.
    * @param {string} to - Recipient email
+   * @param {string} subject - Email subject
    * @param {string} templateName - Template name
-   * @param {object} variables - Template variables
+   * @param {object} variables - Template variables map
+   * @param {number} [userId] - Optional user ID
    * @returns {Promise} Send response
    */
-  async sendTemplateEmail(to, templateName, variables) {
+  async sendTemplateEmail(to, subject, templateName, variables = {}, userId) {
     try {
-      const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS.SEND_EMAIL_TEMPLATE, {
-        to,
-        templateName,
+      const params = { to, subject, templateName };
+      if (userId != null) params.userId = userId;
+      const response = await apiClient.post(
+        API_ENDPOINTS.NOTIFICATIONS.SEND_EMAIL_TEMPLATE,
         variables,
+        { params }
+      );
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get unread notifications (paginated)
+   * @param {number} userId
+   * @param {object} params
+   */
+  async getUnreadNotifications(userId, params = {}) {
+    try {
+      const queryParams = {
+        page: params.page ?? PAGINATION.DEFAULT_PAGE,
+        size: params.size ?? PAGINATION.DEFAULT_SIZE,
+      };
+      const response = await apiClient.get(API_ENDPOINTS.NOTIFICATIONS.UNREAD(userId), {
+        params: queryParams,
       });
       return response;
     } catch (error) {

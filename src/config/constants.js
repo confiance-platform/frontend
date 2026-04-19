@@ -135,11 +135,10 @@ export const TRADE_TYPE_LABELS = {
   INTRADAY: 'Intraday',
 };
 
-// Recommendation Status
+// Recommendation Status (matches backend RecommendationStatus enum)
 export const RECOMMENDATION_STATUS = {
   OPEN: 'OPEN',
   CLOSED: 'CLOSED',
-  PARTIALLY_SOLD: 'PARTIALLY_SOLD',
   EXPIRED: 'EXPIRED',
 };
 
@@ -216,6 +215,8 @@ export const API_ENDPOINTS = {
     DELETE: (id) => `/users/${id}`,
     LIST: '/users',
     VALIDATE_CREDENTIALS: '/users/validate-credentials',
+    BY_EMAIL: '/users/by-email',
+    UPDATE_PASSWORD: (id) => `/users/${id}/password`,
     ADD_ROLE: (id) => `/users/${id}/roles`,
     REMOVE_ROLE: (id) => `/users/${id}/roles`,
   },
@@ -229,6 +230,9 @@ export const API_ENDPOINTS = {
       SET: (userId) => `/admin/permissions/user/${userId}`,
       HAS: (userId, permission) => `/admin/permissions/user/${userId}/has/${permission}`,
     },
+    DASHBOARD_STATS: '/admin/dashboard/stats',
+    USERS_WITH_INVESTMENTS: '/admin/users/with-investments',
+    PORTFOLIO_STATS: '/admin/portfolio/stats',
   },
   // Investments
   INVESTMENTS: {
@@ -252,6 +256,7 @@ export const API_ENDPOINTS = {
     SEND_EMAIL_TEMPLATE: '/notifications/send-email/template',
     SEND_EMAIL_ASYNC: '/notifications/send-email/async',
     USER: (userId) => `/notifications/user/${userId}`,
+    UNREAD: (userId) => `/notifications/user/${userId}/unread`,
     MARK_READ: (notificationId) => `/notifications/${notificationId}/read`,
     MARK_ALL_READ: (userId) => `/notifications/user/${userId}/read-all`,
     DELETE: (notificationId) => `/notifications/${notificationId}`,
@@ -262,8 +267,10 @@ export const API_ENDPOINTS = {
     CREATE_ORDER: '/payments/create-order',
     VERIFY: '/payments/verify',
     USER: (userId) => `/payments/user/${userId}`,
-    GET_BY_ID: (paymentId) => `/payments/${paymentId}`,
-    REFUND: (paymentId) => `/payments/${paymentId}/refund`,
+    GET_BY_ORDER_ID: (orderId) => `/payments/order/${orderId}`,
+    GET_BY_RAZORPAY_ORDER_ID: (razorpayOrderId) => `/payments/razorpay-order/${razorpayOrderId}`,
+    REFUND: (razorpayPaymentId) => `/payments/refund/${razorpayPaymentId}`,
+    WEBHOOK: '/payments/webhook',
   },
   // OTP
   OTP: {
@@ -277,8 +284,9 @@ export const API_ENDPOINTS = {
     UPLOAD_IMAGE: '/files/upload/image',
     UPLOAD_DOCUMENT: '/files/upload/document',
     UPLOAD_VIDEO: '/files/upload/video',
+    GET_BY_PUBLIC_ID: (publicId) => `/files/${encodeURIComponent(publicId)}`,
     GET_BY_ENTITY: (entityType, entityId) => `/files/entity/${entityType}/${entityId}`,
-    DELETE: (publicId) => `/files/${publicId}`,
+    DELETE: (publicId) => `/files/${encodeURIComponent(publicId)}`,
     GET_BY_USER: (userId) => `/files/user/${userId}`,
   },
   // Recommendations
@@ -309,8 +317,12 @@ export const API_ENDPOINTS = {
   // Holdings
   HOLDINGS: {
     USER: (userId) => `/holdings/user/${userId}`,
+    PAGED: (userId) => `/holdings/user/${userId}/paged`,
     SUMMARY: (userId) => `/holdings/user/${userId}/summary`,
     BY_MARKET: (userId, market) => `/holdings/user/${userId}/market/${market}`,
+    BY_SYMBOL: (userId, symbol) => `/holdings/user/${userId}/symbol/${symbol}`,
+    ADMIN_BY_SYMBOL: (symbol) => `/holdings/admin/symbol/${symbol}`,
+    ADMIN_USERS_WITH_HOLDINGS: '/holdings/admin/users-with-holdings',
   },
   // Referrals
   REFERRALS: {

@@ -66,13 +66,13 @@ class PaymentService {
   }
 
   /**
-   * Get payment by ID
-   * @param {string} paymentId - Payment ID
+   * Get payment by internal order ID
+   * @param {string} orderId - Internal order ID
    * @returns {Promise} Payment details
    */
-  async getPaymentById(paymentId) {
+  async getPaymentByOrderId(orderId) {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.PAYMENTS.GET_BY_ID(paymentId));
+      const response = await apiClient.get(API_ENDPOINTS.PAYMENTS.GET_BY_ORDER_ID(orderId));
       return response;
     } catch (error) {
       throw error;
@@ -80,14 +80,35 @@ class PaymentService {
   }
 
   /**
-   * Request refund
-   * @param {string} paymentId - Payment ID
-   * @param {object} refundData - Refund data
+   * Get payment by Razorpay order ID
+   * @param {string} razorpayOrderId - Razorpay order ID
+   * @returns {Promise} Payment details
+   */
+  async getPaymentByRazorpayOrderId(razorpayOrderId) {
+    try {
+      const response = await apiClient.get(
+        API_ENDPOINTS.PAYMENTS.GET_BY_RAZORPAY_ORDER_ID(razorpayOrderId)
+      );
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Request refund for a captured payment (admin).
+   * Backend: POST /payments/refund/{razorpayPaymentId}?amount=X
+   * @param {string} razorpayPaymentId - Razorpay payment ID
+   * @param {number|string} amount - Refund amount
    * @returns {Promise} Refund response
    */
-  async requestRefund(paymentId, refundData = {}) {
+  async requestRefund(razorpayPaymentId, amount) {
     try {
-      const response = await apiClient.post(API_ENDPOINTS.PAYMENTS.REFUND(paymentId), refundData);
+      const response = await apiClient.post(
+        API_ENDPOINTS.PAYMENTS.REFUND(razorpayPaymentId),
+        null,
+        { params: { amount } }
+      );
       return response;
     } catch (error) {
       throw error;

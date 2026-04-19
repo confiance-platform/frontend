@@ -194,24 +194,25 @@ class ReferralService {
       return { commission: 0, percentage: 0, slabName: 'N/A' };
     }
 
-    // Find applicable slab
+    // Backend CommissionSlabResponse: { id, minInvestment, maxInvestment, commissionPercentage, isActive }
     const applicableSlab = slabs.find((slab) => {
-      const min = parseFloat(slab.minAmount || 0);
-      const max = slab.maxAmount ? parseFloat(slab.maxAmount) : Infinity;
-      return investmentAmount >= min && investmentAmount <= max && slab.active;
+      const min = parseFloat(slab.minInvestment ?? 0);
+      const max = slab.maxInvestment != null ? parseFloat(slab.maxInvestment) : Infinity;
+      const active = slab.isActive ?? slab.active ?? true;
+      return investmentAmount >= min && investmentAmount <= max && active;
     });
 
     if (!applicableSlab) {
       return { commission: 0, percentage: 0, slabName: 'N/A' };
     }
 
-    const percentage = parseFloat(applicableSlab.commissionPercentage || 0);
+    const percentage = parseFloat(applicableSlab.commissionPercentage ?? 0);
     const commission = (investmentAmount * percentage) / 100;
 
     return {
       commission: commission.toFixed(2),
       percentage,
-      slabName: applicableSlab.name,
+      slabName: `${applicableSlab.minInvestment}-${applicableSlab.maxInvestment ?? '∞'}`,
     };
   }
 

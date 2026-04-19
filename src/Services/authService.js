@@ -8,6 +8,8 @@ import {
   setSessionId,
   clearAuthData,
   getSessionId,
+  isAuthenticated as checkAuthenticated,
+  getUserData,
 } from '../utils/tokenManager';
 
 class AuthService {
@@ -169,8 +171,7 @@ class AuthService {
    * @returns {boolean} Authentication status
    */
   isAuthenticated() {
-    const { isAuthenticated } = require('../utils/tokenManager');
-    return isAuthenticated();
+    return checkAuthenticated();
   }
 
   /**
@@ -178,7 +179,6 @@ class AuthService {
    * @returns {object|null} Current user data
    */
   getCurrentUser() {
-    const { getUserData } = require('../utils/tokenManager');
     return getUserData();
   }
 }

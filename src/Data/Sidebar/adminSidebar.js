@@ -13,6 +13,18 @@ export const adminSidebarConfig = [
     path: "/dashboard/admin",
     iconClass: "ph-duotone ph-gauge"
   },
+  // User Insights - View user portfolios, investments, etc.
+  {
+    type: "dropdown",
+    name: "User Insights",
+    iconClass: "ph-duotone ph-chart-pie-slice",
+    collapseId: "user-insights",
+    children: [
+      { name: "Overview", path: "/admin/user-insights" },
+      { name: "Invested Users", path: "/admin/user-insights?invested=invested" },
+      { name: "Non-Invested", path: "/admin/user-insights?invested=not_invested" }
+    ]
+  },
   {
     type: "dropdown",
     name: "User Management",

@@ -29,6 +29,10 @@ const AllUsers = React.lazy(() => import("@/Pages/Admin/UserManagement/AllUsers"
 const CreateUser = React.lazy(() => import("@/Pages/Admin/UserManagement/CreateUser"));
 const EditUser = React.lazy(() => import("@/Pages/Admin/UserManagement/EditUser"));
 
+// Admin Pages - User Insights
+const UserInsightsDashboard = React.lazy(() => import("@/Pages/Admin/UserInsights"));
+const UserDetailView = React.lazy(() => import("@/Pages/Admin/UserInsights/UserDetailView"));
+
 // Admin Pages - Admin Management
 const AllAdmins = React.lazy(() => import("@/Pages/Admin/AdminManagement/AllAdmins"));
 const CreateAdmin = React.lazy(() => import("@/Pages/Admin/AdminManagement/CreateAdmin"));
@@ -168,6 +172,10 @@ const Routes = () => {
         { path: AppsRoutes.PROFILE_PAGE, element: <Profile /> },
         { path: AppsRoutes.SETTING_PAGE, element: <Settings /> },
         { path: AppsRoutes.INVOICE_PAGE, element: <Invoice /> },
+
+        // Admin - User Insights Routes
+        { path: "admin/user-insights", element: <UserInsightsDashboard /> },
+        { path: "admin/user-insights/:userId", element: <UserDetailView /> },
 
         // Admin - User Management Routes
         { path: "admin/users", element: <AllUsers /> },
